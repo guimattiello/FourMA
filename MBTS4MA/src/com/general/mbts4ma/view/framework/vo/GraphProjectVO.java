@@ -6,9 +6,13 @@ import java.util.ArrayList;
 import java.util.Date;
 import java.util.LinkedHashMap;
 import java.util.Map;
+import java.util.List;
 
 import com.general.mbts4ma.*;
 import com.general.mbts4ma.erunner.Event;
+import com.general.mbts4ma.view.framework.util.DatabaseRegression;
+import com.general.mbts4ma.view.framework.util.PageObject;
+import com.general.mbts4ma.view.framework.util.TestClass;
 
 public class GraphProjectVO extends AbstractVO implements Serializable {
 
@@ -18,6 +22,22 @@ public class GraphProjectVO extends AbstractVO implements Serializable {
 	private String description;
 	private String androidProjectPath;
 
+	/** BEGIN WEB PROJECT VARIABLES **/	
+	private String webProjectURL;
+	private String webProjectPageObject;
+	private boolean isWebProject;
+	private List<PageObject> pageObjects;
+	private List<TestClass> testClasses;
+	private String webProjectDirTestPath;
+	private DatabaseRegression databaseRegression;
+	
+	private String dbhost;
+	private String dbname;
+	private String dbuser;
+	private String dbpassword;
+	
+	/** END WEB PROJECT VARIABLES **/
+	
 	private String graphXML;
 	
 	private boolean itsAndroidProject = false;
@@ -64,6 +84,62 @@ public class GraphProjectVO extends AbstractVO implements Serializable {
 
 	public void setAndroidProjectPath(String androidProjectPath) {
 		this.androidProjectPath = androidProjectPath;
+	}
+	
+	public String getWebProjectURL() {
+		return this.webProjectURL;
+	}
+	
+	public void setWebProjectURL(String webProjectURL) {
+		this.webProjectURL = webProjectURL;
+	}
+	
+	public String getWebProjectPageObject() {
+		return this.webProjectPageObject;
+	}
+	
+	public void setWebProjectPageObject(String webProjectPageObject) {
+		this.webProjectPageObject = webProjectPageObject;
+	}
+	
+	public String getWebProjectDirTestPath() {
+		return this.webProjectDirTestPath;
+	}
+
+	public void setWebProjectDirTestPath(String webProjectDirTestPath) {
+		this.webProjectDirTestPath = webProjectDirTestPath;
+	}	
+	
+	public DatabaseRegression getDatabaseRegression() {
+		return this.databaseRegression;
+	}
+	
+	public void setDatabaseRegression(DatabaseRegression databaseRegression) {
+		this.databaseRegression = databaseRegression;
+	}
+	
+	public boolean getIsWebProject(){
+		return this.isWebProject;
+	}
+	
+	public void setIsWebProject(boolean isWebProject){
+		this.isWebProject = isWebProject;
+	}
+	
+	public void setPageObjects(List<PageObject> pageObjects){
+		this.pageObjects = pageObjects;
+	}
+
+	public List<PageObject> getPageObjects(){
+		return this.pageObjects;
+	}
+	
+	public void setTestClasses(List<TestClass> testClasses){
+		this.testClasses = testClasses;
+	}
+
+	public List<TestClass> getTestClasses(){
+		return this.testClasses;
 	}
 
 	public String getGraphXML() {
@@ -127,7 +203,7 @@ public class GraphProjectVO extends AbstractVO implements Serializable {
 		this.getMethodTemplatesByVertices().remove(verticeId);
 	}
 	
-	// EI - REMOVE (ESPECÍFICO)
+	// EI - REMOVE (ESPECï¿½FICO)
 	public void removeEventInstance(EventInstance ei) {
 		this.eventInstance.remove(ei);
 	}

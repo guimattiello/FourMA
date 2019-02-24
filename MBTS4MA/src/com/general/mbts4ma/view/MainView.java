@@ -10,12 +10,16 @@ import java.awt.event.MouseAdapter;
 import java.awt.event.MouseEvent;
 import java.awt.event.MouseWheelEvent;
 import java.io.File;
+import java.lang.annotation.Annotation;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Date;
 import java.util.HashMap;
 import java.util.Iterator;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import java.util.UUID;
 import javax.swing.AbstractAction;
 import javax.swing.Action;
@@ -43,14 +47,17 @@ import javax.swing.filechooser.FileNameExtensionFilter;
 import com.general.mbts4ma.view.dialog.ExtractCESsDialog;
 import com.general.mbts4ma.view.dialog.ExtractEventFlowDialog;
 import com.general.mbts4ma.view.dialog.ProjectPropertiesDialog;
+import com.general.mbts4ma.view.dialog.WebProjectPropertiesDialog;
 import com.general.mbts4ma.view.framework.bo.GraphConverter;
 import com.general.mbts4ma.view.framework.bo.GraphProjectBO;
 import com.general.mbts4ma.view.framework.bo.GraphSolver;
 import com.general.mbts4ma.view.framework.graph.CustomGraphActions;
 import com.general.mbts4ma.view.framework.util.HardwareUtil;
+import com.general.mbts4ma.view.framework.util.PageObject;
 import com.general.mbts4ma.view.framework.vo.GraphProjectVO;
 import com.github.eta.esg.Vertex;
 import com.mxgraph.model.mxCell;
+import com.mxgraph.model.mxGraphModel;
 import com.mxgraph.swing.mxGraphComponent;
 import com.mxgraph.swing.handler.mxConnectionHandler;
 import com.mxgraph.swing.handler.mxKeyboardHandler;
@@ -60,6 +67,17 @@ import com.mxgraph.util.mxEventObject;
 import com.mxgraph.util.mxEventSource.mxIEventListener;
 import com.mxgraph.view.mxGraph;
 import com.mxgraph.view.mxStylesheet;
+
+import spoon.Launcher;
+import spoon.reflect.CtModelImpl;
+import spoon.reflect.code.CtBlock;
+import spoon.reflect.code.CtStatement;
+import spoon.reflect.declaration.CtAnnotation;
+import spoon.reflect.declaration.CtClass;
+import spoon.reflect.declaration.CtMethod;
+import spoon.reflect.declaration.CtType;
+import spoon.reflect.factory.Factory;
+import spoon.reflect.reference.CtTypeReference;
 
 public class MainView extends JFrame {
 
@@ -77,6 +95,13 @@ public class MainView extends JFrame {
 
 	private static final long serialVersionUID = 8273385277816531639L;
 
+	/* BEGIN WEB VARIABLES */
+	//public static ArrayList<String> metodos;
+	//public static ArrayList<ArrayList<String>> metodosWeb;
+	public static ArrayList<String> pageObjectsPath;
+	public static ArrayList<PageObject> pageObjects;
+	/* END WEB VARIABLES */
+	
 	private JPanel contentPane;
 
 	private mxGraph graph = null;
@@ -100,6 +125,7 @@ public class MainView extends JFrame {
 	private JMenu mnSettings;
 
 	private JMenuItem mnItemNew;
+	private JMenuItem mnItemNewWebApplicationProject;
 	private JMenuItem mnItemOpen;
 	private JMenuItem mnItemSave;
 	private JMenuItem mnItemClose;
@@ -142,6 +168,16 @@ public class MainView extends JFrame {
 		});
 		this.mnItemNew.setFont(new Font("Verdana", Font.PLAIN, 12));
 		this.mnFile.add(this.mnItemNew);
+		
+		this.mnItemNewWebApplicationProject = new JMenuItem("New Web App Project");
+		this.mnItemNewWebApplicationProject.addActionListener(new ActionListener() {
+			@Override
+			public void actionPerformed(ActionEvent e) {
+				MainView.this.newWebAppProject();
+			}
+		});
+		this.mnItemNew.setFont(new Font("Verdana", Font.PLAIN, 12));
+		this.mnFile.add(this.mnItemNewWebApplicationProject);
 
 		this.mnItemOpen = new JMenuItem("Open");
 		this.mnItemOpen.addActionListener(new ActionListener() {
@@ -311,6 +347,7 @@ public class MainView extends JFrame {
 		this.btnExit.setEnabled(true);
 
 		this.mnItemNew.setEnabled(!isProjectOpened);
+		this.mnItemNewWebApplicationProject.setEnabled(!isProjectOpened);
 		this.mnItemOpen.setEnabled(!isProjectOpened);
 		this.mnItemSave.setEnabled(isProjectOpened);
 		this.mnItemClose.setEnabled(isProjectOpened);
@@ -401,42 +438,81 @@ public class MainView extends JFrame {
 						popup.add(MainView.this.bind("Select All Vertices", CustomGraphActions.getSelectAllVerticesAction()));
 
 						popup.addSeparator();
+						
+						if (graphProject.getItsAndroidProject()) {
 
-						final JMenu methodTemplatesMenu = new JMenu("Method Templates");
-
-						methodTemplatesMenu.add(MainView.this.bind("Clear Method Template", CustomGraphActions.getClearMethodTemplateAction(MainView.this.graphProject)));
-
-						methodTemplatesMenu.addSeparator();
-
-						Map<String, String> methodTemplates = GraphProjectBO.getMethodTemplates(graphProject.getFramework());
-
-						Iterator<String> iMethodTemplates = methodTemplates.keySet().iterator();
-
-						while (iMethodTemplates.hasNext()) {
-							String key = iMethodTemplates.next();
-
-							methodTemplatesMenu.add(MainView.this.bind(key, CustomGraphActions.getDefineMethodTemplateAction(MainView.this.graphProject, key)));
+							final JMenu methodTemplatesMenu = new JMenu("Method Templates");
+	
+							methodTemplatesMenu.add(MainView.this.bind("Clear Method Template", CustomGraphActions.getClearMethodTemplateAction(MainView.this.graphProject)));
+	
+							methodTemplatesMenu.addSeparator();
+	
+							Map<String, String> methodTemplates = GraphProjectBO.getMethodTemplates(graphProject.getFramework());
+	
+							Iterator<String> iMethodTemplates = methodTemplates.keySet().iterator();
+	
+							while (iMethodTemplates.hasNext()) {
+								String key = iMethodTemplates.next();
+	
+								methodTemplatesMenu.add(MainView.this.bind(key, CustomGraphActions.getDefineMethodTemplateAction(MainView.this.graphProject, key)));
+							}
+	
+							popup.add(methodTemplatesMenu);
+	
+							final JMenu edgeTemplatesMenu = new JMenu("Edge Templates");
+	
+							edgeTemplatesMenu.add(MainView.this.bind("Clear Edge Template", CustomGraphActions.getClearEdgeTemplateAction(MainView.this.graphProject)));
+	
+							edgeTemplatesMenu.addSeparator();
+	
+							Map<String, String> edgeTemplates = GraphProjectBO.getEdgeTemplates(graphProject.getFramework());
+	
+							Iterator<String> iEdgeTemplates = edgeTemplates.keySet().iterator();
+	
+							while (iEdgeTemplates.hasNext()) {
+								String key = iEdgeTemplates.next();
+	
+								edgeTemplatesMenu.add(MainView.this.bind(key, CustomGraphActions.getDefineEdgeTemplateAction(MainView.this.graphProject, key)));
+							}
+	
+							popup.add(edgeTemplatesMenu);
+							
+						} else { //Senão é web project
+							ArrayList<String> pageObjectsPath = new ArrayList(Arrays.asList(graphProject.getWebProjectPageObject().split(",")));
+							
+							JMenu pageObjectsTemplatesMenu;
+							
+							Map<String, String> metodosWeb;
+							
+							//for (Iterator<String> i = pageObjectsPath.iterator(); i.hasNext(); ){
+							for (Iterator<PageObject> i = graphProject.getPageObjects().iterator(); i.hasNext(); ) {
+								
+								PageObject pageObjectNext = i.next();
+								
+								String fileContentPageObject = pageObjectNext.getContent();
+								String fileNamePageObject = pageObjectNext.getClassName();
+								
+								pageObjectsTemplatesMenu = new JMenu(fileNamePageObject);
+								
+								metodosWeb = new LinkedHashMap<String, String>();
+								
+								pageObjectNext.getParsedClass().getAllMethods();
+								
+								Set<CtMethod> ctMethods = pageObjectNext.getParsedClass().getMethods();
+								
+						        //Run through all methods
+						        for (CtMethod method : ctMethods) {								
+			
+									String key = method.getSimpleName();
+									
+									pageObjectsTemplatesMenu.add(MainView.this.bind(key, CustomGraphActions.getDefineMethodTemplateAction(MainView.this.graphProject, key)));
+			
+								}
+								
+								popup.add(pageObjectsTemplatesMenu);
+								
+							}
 						}
-
-						popup.add(methodTemplatesMenu);
-
-						final JMenu edgeTemplatesMenu = new JMenu("Edge Templates");
-
-						edgeTemplatesMenu.add(MainView.this.bind("Clear Edge Template", CustomGraphActions.getClearEdgeTemplateAction(MainView.this.graphProject)));
-
-						edgeTemplatesMenu.addSeparator();
-
-						Map<String, String> edgeTemplates = GraphProjectBO.getEdgeTemplates(graphProject.getFramework());
-
-						Iterator<String> iEdgeTemplates = edgeTemplates.keySet().iterator();
-
-						while (iEdgeTemplates.hasNext()) {
-							String key = iEdgeTemplates.next();
-
-							edgeTemplatesMenu.add(MainView.this.bind(key, CustomGraphActions.getDefineEdgeTemplateAction(MainView.this.graphProject, key)));
-						}
-
-						popup.add(edgeTemplatesMenu);
 
 						popup.show(MainView.this.graphComponent, e.getX(), e.getY());
 					}
@@ -480,7 +556,7 @@ public class MainView extends JFrame {
 	private void createBasicGraph() {
 		MainView.this.graph.getModel().beginUpdate();
 
-		MainView.this.graph.insertVertex(MainView.this.graph.getDefaultParent(), ID_START_VERTEX, "[", 100, 50, 50, 50, START_VERTEX);
+		MainView.this.graph.insertVertex(MainView.this.graph.getDefaultParent(), ID_START_VERTEX, "[", 50, 400, 50, 50, START_VERTEX);
 		MainView.this.graph.insertVertex(MainView.this.graph.getDefaultParent(), ID_END_VERTEX, "]", 400, 50, 50, 50, END_VERTEX);
 
 		MainView.this.graph.getModel().endUpdate();
@@ -501,6 +577,136 @@ public class MainView extends JFrame {
 			this.createBasicGraph();
 		}
 
+		this.updateControllers();
+	}
+	
+	private void newWebAppProject() {
+		this.graphProject = null;
+
+		WebProjectPropertiesDialog dialog = new WebProjectPropertiesDialog(this.graphProject);
+
+		dialog.setVisible(true);
+
+		this.graphProject = dialog.getGraphProject();
+
+		if (this.graphProject != null) {
+			graphProject.setIsWebProject(true);
+			
+			this.initGraph();
+			
+			this.createBasicGraph();
+		}
+		
+		for (PageObject po : graphProject.getPageObjects()) {
+			System.out.println(po.getParsedClass());
+		}
+		
+		/* PUXA TODOS OS ARQUIVOS DE UMA PASTA E CRIA UM MODELO SPOON (UTIL PARA OS PAGE OBJECTS)
+		Launcher launcher = new Launcher();
+		launcher.getEnvironment().setNoClasspath(true);
+		launcher.addInputResource("/Users/guimat/po/");
+		//launcher.getModelBuilder().setBinaryOutputDirectory(new File("./src/main/java/com/basic/dao/"));
+		launcher.buildModel();
+		
+		final CtModelImpl model = (CtModelImpl) launcher.getModel(); 
+		List<CtType<?>> classesList = launcher.getFactory().Class().getAll();
+		for (CtType<?> type : classesList) {
+			System.out.println(type.toString());
+			// Busca um metodo chamado display
+			CtClass<?> classB = factory.Class().get("your.package.B"); // here I assume that your.package.B is the fully qualified name
+			CtMethod<?> displayMethod = (CtMethod<?>)classB.filterChildren(new TypeFilter<CtMethod>(CtMethod.class)).filterChildren(new NameFilter<CtMethod>("display")).list().get(0);
+			// Busca uma invocaçao do metodo display
+			CtClass<?> classA = factory.Class().get("your.package.A");
+			CtInvocation displayInvocation = (CtInvocation)classA.filterChildren(new TypeFilter<CtInvocation>(CtInvocation.class)).filterChildren(new NameFilter<CtInvocation>("display")).list().get(0);
+	    }*/
+		   
+
+		//Coverte uma classe Spoon em um grafo
+		MainView.this.graph.getModel().beginUpdate();
+		
+		CtClass rfClass = this.graphProject.getTestClasses().get(0).getParsedClass();
+		
+		Factory rfFactory = rfClass.getFactory();
+		
+		Set<CtMethod> ctMethods = rfClass.getMethods();		
+		
+		double verticalDistance = 50;
+		
+        //Run through all methods
+        for (CtMethod method : ctMethods) {        	        
+        	
+            //Get the annotations to look for test methods        	
+        	for (CtAnnotation<? extends Annotation> ann : method.getAnnotations()) {
+        	
+            //method.getAnnotations().forEach(ann -> {
+            	
+                //If the method is a Test case, then refactor the statements into the Page Object                
+                if (ann.toString().contains("@Test")) {
+                	CtBlock block = method.getBody();
+                    List<CtStatement> statements = block.getStatements();
+
+                    double horizontalDistance = 200;
+                    
+                    ArrayList<CtStatement> statementsByMethod = new ArrayList<CtStatement>();
+                    
+                    mxCell lastVertex = (mxCell) ((mxGraphModel)graph.getModel()).getCell(ID_START_VERTEX);                                       
+                    
+                    for (CtStatement statement : statements) {
+                    	
+                      	
+                    	//Set<CtTypeReference<?>> ref = statement.getReferencedTypes();
+
+                    	//for (CtTypeReference<?> ref : statement.getReferencedTypes()) {
+                    		//System.out.println(ref.);
+                    	//}
+                    	
+                    	if (!statement.toString().trim().contains("//")) {
+                    	//if (statement.getComments().size() == 0) {
+                    		
+                    		String fullStat = statement.toString();
+                    		String[] splitStatement = fullStat.split("\\.");
+                    		
+                    		
+                    		for (String stat : splitStatement) {
+                    			//System.out.println(statement.getReferencedTypes().toString() + " - " + statement.toString());                    	
+    	                    	//MainView.this.graph.insertVertex(MainView.this.graph.getDefaultParent(), UUID.randomUUID().toString(), statement.toString(), horizontalDistance, verticalDistance, 100, 50, NORMAL_VERTEX);                                        
+    	
+    							mxCell newVertex = (mxCell) graph.insertVertex(MainView.this.graph.getDefaultParent(), UUID.randomUUID().toString(), stat, horizontalDistance, verticalDistance, 100, 50, MainView.GENERATED_EVENT_VERTEX);
+    	
+    							graph.insertEdge(graph.getDefaultParent(), UUID.randomUUID().toString(), "", lastVertex, newVertex, MainView.GENERATED_EDGE);					
+    	                    	
+    							lastVertex = newVertex;
+    							
+    	                    	horizontalDistance += 150;
+    	                    	statementsByMethod.add(statement);
+    	                    	
+                    		}                   
+	                    	
+                    	} else {
+                    		//System.out.print("COMENTARIO " + statement.getComments().toString());
+                    	}
+                    	
+                    }              
+                    
+                    verticalDistance += 100;
+                    
+                    //link the last vertex created to the last vertex of the graph
+                    mxCell lastGraphVertex = (mxCell) ((mxGraphModel)graph.getModel()).getCell(ID_END_VERTEX);
+                    graph.insertEdge(graph.getDefaultParent(), UUID.randomUUID().toString(), "", lastVertex, lastGraphVertex, MainView.GENERATED_EDGE);
+                    
+                    this.graphProject.getTestClasses().get(0).addMethodWithStatements(statementsByMethod);
+                    
+                    System.out.println("------------");
+                }
+            }
+        }
+		
+		//MainView.this.graph.insertVertex(MainView.this.graph.getDefaultParent(), ID_START_VERTEX, "[", 100, 50, 50, 50, START_VERTEX);
+		//MainView.this.graph.insertVertex(MainView.this.graph.getDefaultParent(), ID_END_VERTEX, "]", 400, 50, 50, 50, END_VERTEX);
+
+		MainView.this.graph.getModel().endUpdate();
+		
+		
 		this.updateControllers();
 	}
 
