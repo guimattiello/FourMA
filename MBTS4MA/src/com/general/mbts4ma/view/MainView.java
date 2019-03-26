@@ -38,6 +38,7 @@ import javax.swing.JOptionPane;
 import javax.swing.JPanel;
 import javax.swing.JPopupMenu;
 import javax.swing.JSeparator;
+import javax.swing.JTabbedPane;
 import javax.swing.JToolBar;
 import javax.swing.KeyStroke;
 import javax.swing.SwingUtilities;
@@ -52,11 +53,13 @@ import com.general.mbts4ma.view.framework.bo.GraphConverter;
 import com.general.mbts4ma.view.framework.bo.GraphProjectBO;
 import com.general.mbts4ma.view.framework.bo.GraphSolver;
 import com.general.mbts4ma.view.framework.graph.CustomGraphActions;
+import com.general.mbts4ma.view.framework.util.ASTSpoonScanner;
 import com.general.mbts4ma.view.framework.util.HardwareUtil;
 import com.general.mbts4ma.view.framework.util.PageObject;
 import com.general.mbts4ma.view.framework.vo.GraphProjectVO;
 import com.github.eta.esg.Vertex;
 import com.mxgraph.model.mxCell;
+import com.mxgraph.model.mxGeometry;
 import com.mxgraph.model.mxGraphModel;
 import com.mxgraph.swing.mxGraphComponent;
 import com.mxgraph.swing.handler.mxConnectionHandler;
@@ -70,14 +73,20 @@ import com.mxgraph.view.mxStylesheet;
 
 import spoon.Launcher;
 import spoon.reflect.CtModelImpl;
+import spoon.reflect.code.CtAssignment;
 import spoon.reflect.code.CtBlock;
+import spoon.reflect.code.CtInvocation;
+import spoon.reflect.code.CtLocalVariable;
 import spoon.reflect.code.CtStatement;
 import spoon.reflect.declaration.CtAnnotation;
 import spoon.reflect.declaration.CtClass;
+import spoon.reflect.declaration.CtElement;
 import spoon.reflect.declaration.CtMethod;
 import spoon.reflect.declaration.CtType;
 import spoon.reflect.factory.Factory;
 import spoon.reflect.reference.CtTypeReference;
+import spoon.reflect.visitor.CtScanner;
+import spoon.reflect.visitor.filter.TypeFilter;
 
 public class MainView extends JFrame {
 
@@ -103,6 +112,7 @@ public class MainView extends JFrame {
 	/* END WEB VARIABLES */
 	
 	private JPanel contentPane;
+	private JTabbedPane tabbedPane;
 
 	private mxGraph graph = null;
 	private mxGraphComponent graphComponent = null;
@@ -322,6 +332,9 @@ public class MainView extends JFrame {
 		this.contentPane = new JPanel();
 		this.contentPane.setBorder(new EmptyBorder(5, 5, 5, 5));
 		this.contentPane.setLayout(new BorderLayout(0, 0));
+		
+		/*this.tabbedPane = new JTabbedPane();
+		this.tabbedPane.addTab("Model", this.contentPane);*/		
 
 		this.setContentPane(this.contentPane);
 
@@ -501,7 +514,7 @@ public class MainView extends JFrame {
 								Set<CtMethod> ctMethods = pageObjectNext.getParsedClass().getMethods();
 								
 						        //Run through all methods
-						        for (CtMethod method : ctMethods) {								
+						        for (CtMethod method : ctMethods) {
 			
 									String key = method.getSimpleName();
 									
@@ -557,7 +570,7 @@ public class MainView extends JFrame {
 		MainView.this.graph.getModel().beginUpdate();
 
 		MainView.this.graph.insertVertex(MainView.this.graph.getDefaultParent(), ID_START_VERTEX, "[", 50, 400, 50, 50, START_VERTEX);
-		MainView.this.graph.insertVertex(MainView.this.graph.getDefaultParent(), ID_END_VERTEX, "]", 400, 50, 50, 50, END_VERTEX);
+		MainView.this.graph.insertVertex(MainView.this.graph.getDefaultParent(), ID_END_VERTEX, "]", 1400, 500, 50, 50, END_VERTEX);
 
 		MainView.this.graph.getModel().endUpdate();
 	}
@@ -578,6 +591,106 @@ public class MainView extends JFrame {
 		}
 
 		this.updateControllers();
+	}
+	
+	/*
+	 * NAO FUNCIONOU **/
+	private String getIdFromPreviousVertice(ArrayList<String> sequence, String last) {
+		
+		try {
+			GraphSolver.solve(this.graph);
+			
+			List<List<Vertex>> cess = GraphSolver.getCess();
+			
+			mxCell vertice = (mxCell) ((mxGraphModel)graph.getModel()).getCell(ID_START_VERTEX);
+			
+			for (List<Vertex> vertexList : cess) {
+							
+				if (vertexList.get(sequence.size()).getName() == sequence.get(sequence.size()-1)) {
+					
+					boolean control = true;
+					int count = sequence.size();
+					
+					while (control == true && count > 0) {
+						
+						if (sequence.get(count-1) != vertexList.get(count).getName()) {
+							control = false;
+						}
+						
+						count--;
+						
+					}
+					
+					//Nesse caso, nao precisa criar o vertice
+					if (control == true) 
+						return null;
+					
+				} else if (vertexList.get(sequence.size()-1).getName() == sequence.get(sequence.size()-2)) {
+					
+					boolean control = true;
+					int count = sequence.size()-1;
+					
+					while (control == true && count > 0) {
+						
+						if (sequence.get(count-1) != vertexList.get(count).getName()) {
+							control = false;
+						}
+						
+						count--;
+						
+					}
+					
+					//Nesse caso, retorna o ultimo vertice
+					if (control == true) 
+						return vertexList.get(sequence.size()-1).getId();
+					
+				}
+				
+			}
+				
+		} catch (Exception e) {
+			
+			e.printStackTrace();
+			
+		}
+		
+		return last;
+				
+	}
+
+	//Funcao retorna uma das listas, dentro do parametro searchingIntoSequences, que possui a lista enviada por parametro (searchingBySequence) como sublist.
+	private LinkedHashMap<String, String> getPreviousVerticesList(ArrayList<LinkedHashMap<String, String>> searchingIntoSequences, ArrayList<String> searchingBySequence) {
+		
+		if (searchingBySequence.isEmpty()) 
+			return null;
+		
+		for (LinkedHashMap<String, String> linkedHashMap : searchingIntoSequences) {
+			
+			boolean control = true;
+			int count = searchingBySequence.size()-1;
+			
+			while (control == true && count > 0 && linkedHashMap.size() > count) {
+				
+				Set<Map.Entry<String, String>> mapSetSearchingIntoList = linkedHashMap.entrySet();
+		        Map.Entry<String, String> elementAtSearchingIntoList = (Map.Entry<String, String>) mapSetSearchingIntoList.toArray()[count];
+		        
+		        String elementAtSearchingForList = searchingBySequence.get(count);
+		        
+		        if (!elementAtSearchingForList.equals(elementAtSearchingIntoList.getKey())) {
+		        	control = false;
+		        }
+
+				count--;
+				
+			}
+			
+			//Nesse caso, retorna a lista
+			if (control == true) 
+				return linkedHashMap;
+			
+		}
+				
+		return null;
 	}
 	
 	private void newWebAppProject() {
@@ -601,7 +714,7 @@ public class MainView extends JFrame {
 			System.out.println(po.getParsedClass());
 		}
 		
-		/* PUXA TODOS OS ARQUIVOS DE UMA PASTA E CRIA UM MODELO SPOON (UTIL PARA OS PAGE OBJECTS)
+		/* PUXA TODOS OS ARQUIVOS DE UMA PASTA E CRIA UM MODELO SPOON (UTIL PARA OS PAGE OBJECTS)*/
 		Launcher launcher = new Launcher();
 		launcher.getEnvironment().setNoClasspath(true);
 		launcher.addInputResource("/Users/guimat/po/");
@@ -610,99 +723,156 @@ public class MainView extends JFrame {
 		
 		final CtModelImpl model = (CtModelImpl) launcher.getModel(); 
 		List<CtType<?>> classesList = launcher.getFactory().Class().getAll();
+				
 		for (CtType<?> type : classesList) {
-			System.out.println(type.toString());
-			// Busca um metodo chamado display
-			CtClass<?> classB = factory.Class().get("your.package.B"); // here I assume that your.package.B is the fully qualified name
-			CtMethod<?> displayMethod = (CtMethod<?>)classB.filterChildren(new TypeFilter<CtMethod>(CtMethod.class)).filterChildren(new NameFilter<CtMethod>("display")).list().get(0);
-			// Busca uma invocaçao do metodo display
-			CtClass<?> classA = factory.Class().get("your.package.A");
-			CtInvocation displayInvocation = (CtInvocation)classA.filterChildren(new TypeFilter<CtInvocation>(CtInvocation.class)).filterChildren(new NameFilter<CtInvocation>("display")).list().get(0);
-	    }*/
-		   
-
-		//Coverte uma classe Spoon em um grafo
-		MainView.this.graph.getModel().beginUpdate();
-		
-		CtClass rfClass = this.graphProject.getTestClasses().get(0).getParsedClass();
-		
-		Factory rfFactory = rfClass.getFactory();
-		
-		Set<CtMethod> ctMethods = rfClass.getMethods();		
-		
-		double verticalDistance = 50;
-		
-        //Run through all methods
-        for (CtMethod method : ctMethods) {        	        
-        	
-            //Get the annotations to look for test methods        	
-        	for (CtAnnotation<? extends Annotation> ann : method.getAnnotations()) {
-        	
-            //method.getAnnotations().forEach(ann -> {
-            	
-                //If the method is a Test case, then refactor the statements into the Page Object                
-                if (ann.toString().contains("@Test")) {
-                	CtBlock block = method.getBody();
-                    List<CtStatement> statements = block.getStatements();
-
-                    double horizontalDistance = 200;
-                    
-                    ArrayList<CtStatement> statementsByMethod = new ArrayList<CtStatement>();
-                    
-                    mxCell lastVertex = (mxCell) ((mxGraphModel)graph.getModel()).getCell(ID_START_VERTEX);                                       
-                    
-                    for (CtStatement statement : statements) {
-                    	
-                      	
-                    	//Set<CtTypeReference<?>> ref = statement.getReferencedTypes();
-
-                    	//for (CtTypeReference<?> ref : statement.getReferencedTypes()) {
-                    		//System.out.println(ref.);
-                    	//}
-                    	
-                    	if (!statement.toString().trim().contains("//")) {
-                    	//if (statement.getComments().size() == 0) {
-                    		
-                    		String fullStat = statement.toString();
-                    		String[] splitStatement = fullStat.split("\\.");
-                    		
-                    		
-                    		for (String stat : splitStatement) {
-                    			//System.out.println(statement.getReferencedTypes().toString() + " - " + statement.toString());                    	
-    	                    	//MainView.this.graph.insertVertex(MainView.this.graph.getDefaultParent(), UUID.randomUUID().toString(), statement.toString(), horizontalDistance, verticalDistance, 100, 50, NORMAL_VERTEX);                                        
-    	
-    							mxCell newVertex = (mxCell) graph.insertVertex(MainView.this.graph.getDefaultParent(), UUID.randomUUID().toString(), stat, horizontalDistance, verticalDistance, 100, 50, MainView.GENERATED_EVENT_VERTEX);
-    	
-    							graph.insertEdge(graph.getDefaultParent(), UUID.randomUUID().toString(), "", lastVertex, newVertex, MainView.GENERATED_EDGE);					
-    	                    	
-    							lastVertex = newVertex;
-    							
-    	                    	horizontalDistance += 150;
-    	                    	statementsByMethod.add(statement);
-    	                    	
-                    		}                   
+			
+			Set<CtMethod<?>> ctMethods = type.getMethods();
+			
+			double verticalDistance = 50;
+			
+			//Essa lista serve para identificar caminhos pré-existentes
+			ArrayList<LinkedHashMap<String, String>> listaStatements = new ArrayList<LinkedHashMap<String, String>>();
+			
+			for (CtMethod<?> method : ctMethods) { 
+									        	
+	            //Get the annotations to look for test methods        	
+	        	for (CtAnnotation<? extends Annotation> ann : method.getAnnotations()) {
+	        		
+	                if (ann.toString().contains("org.junit.Test")) {
+	                	CtBlock block = method.getBody();
+	                	
+	                	//Grava a sequência de statements desse método com o respectivo id do vértice
+	                	LinkedHashMap<String, String> methodSequence = new LinkedHashMap<String, String>();
+	                		              	                	
+	                    List<CtStatement> statements = block.getStatements();
+	                    
+	                    ArrayList<String> statementsSequence = new ArrayList<String>();
+	                    
+	                    double horizontalDistance = 200;	                   
+	                    
+	                    mxCell lastVertex = (mxCell) ((mxGraphModel)graph.getModel()).getCell(ID_START_VERTEX); 	                    	                    
+	                    	                    
+	                    for (CtStatement statement : statements) {
+	                    		                    	
+	                    	ArrayList<CtElement> elementsFromStatement = (new ASTSpoonScanner()).visitStatementAST(statement);	     	                    	
 	                    	
-                    	} else {
-                    		//System.out.print("COMENTARIO " + statement.getComments().toString());
-                    	}
-                    	
-                    }              
-                    
-                    verticalDistance += 100;
-                    
-                    //link the last vertex created to the last vertex of the graph
-                    mxCell lastGraphVertex = (mxCell) ((mxGraphModel)graph.getModel()).getCell(ID_END_VERTEX);
-                    graph.insertEdge(graph.getDefaultParent(), UUID.randomUUID().toString(), "", lastVertex, lastGraphVertex, MainView.GENERATED_EDGE);
-                    
-                    this.graphProject.getTestClasses().get(0).addMethodWithStatements(statementsByMethod);
-                    
-                    System.out.println("------------");
-                }
-            }
-        }
-		
-		//MainView.this.graph.insertVertex(MainView.this.graph.getDefaultParent(), ID_START_VERTEX, "[", 100, 50, 50, 50, START_VERTEX);
-		//MainView.this.graph.insertVertex(MainView.this.graph.getDefaultParent(), ID_END_VERTEX, "]", 400, 50, 50, 50, END_VERTEX);
+	                    	System.out.println(elementsFromStatement);
+	                    	
+	                    	//Check if the statement is an Assert
+	                    	if (elementsFromStatement.size() > 0 && elementsFromStatement.get(elementsFromStatement.size()-1) instanceof CtInvocation) {	                    		
+	                    		CtInvocation isAssert = (CtInvocation) elementsFromStatement.get(elementsFromStatement.size()-1);
+	                    	
+	                    		//If an Assert, remove all related invocations
+	                    		if (isAssert.toString().contains("org.junit.Assert")) {
+		                    		elementsFromStatement.clear();
+		                    		elementsFromStatement.add(isAssert);
+		                    	}
+	                    	}
+	                    	
+	                    	for (CtElement ctElement : elementsFromStatement) {
+	                    		
+	                    		if (ctElement instanceof CtInvocation) {
+	                    		
+		                    		CtInvocation ctInvocation = (CtInvocation) ctElement;
+		                    		
+		                    		//Add to sequence control array
+		                    		//statementsSequence.add(ctInvocation.getTarget().getType() + "::" + ctInvocation.getExecutable());
+		                    		
+		                    		double vertexSize = ctInvocation.getExecutable().getSimpleName().toString().length() * 3 + 120;
+		                    		
+		                    		statementsSequence.add(ctInvocation.getTarget().getType() + "::" + ctInvocation.getExecutable());
+		                    		
+		                    		LinkedHashMap<String, String> listLastCommonVertex = getPreviousVerticesList(listaStatements, statementsSequence);
+
+		                    		mxCell newVertex = null;
+		                    		
+		                    		String newVertexId = UUID.randomUUID().toString();
+		                    		
+		                    		boolean createNewVertex = true;
+		                    		
+		                    		if (listLastCommonVertex != null && listLastCommonVertex.size() > 0) {
+		                    			Set<Map.Entry<String, String>> mapSetSearchingReturnedList = listLastCommonVertex.entrySet();
+		                		        Map.Entry<String, String> lastElementAtSearchingIntoList = (Map.Entry<String, String>) mapSetSearchingReturnedList.toArray()[statementsSequence.size()-1];
+		                    			
+		                		        String lastElementAtSearchingForList = statementsSequence.get(statementsSequence.size()-1);
+		                		        
+		                		        if (lastElementAtSearchingForList.equals(lastElementAtSearchingIntoList.getKey())) {
+		                		        	
+		                		        	newVertexId = lastElementAtSearchingIntoList.getValue();
+		                		        	createNewVertex = false;
+		                		        	
+		                		        } else if (listLastCommonVertex.size() > 1 && statementsSequence.size() > 1) {
+		                		        	
+		                		        	Map.Entry<String, String> beforeLastElementAtSearchingIntoList = (Map.Entry<String, String>) mapSetSearchingReturnedList.toArray()[statementsSequence.size()-2];
+		                		        	String beforeLastElementAtSearchingForList = statementsSequence.get(statementsSequence.size()-2);
+		                		        	
+		                		        	if (beforeLastElementAtSearchingForList.equals(beforeLastElementAtSearchingIntoList.getKey())) {
+		                		        		newVertexId = lastElementAtSearchingIntoList.getValue();
+		                		        	}
+		                		        }
+		                    		}
+		                    		
+		                    		if (createNewVertex) {		                    		
+			                    		//Se é assert, o label e a cor do vértice é diferente
+			                    		if (ctInvocation.toString().contains("org.junit.Assert")) {
+			                    			newVertex = (mxCell) graph.insertVertex(MainView.this.graph.getDefaultParent(), newVertexId, "ASSERT\n" + ctInvocation.getExecutable().getSimpleName(), horizontalDistance, verticalDistance, vertexSize, 50, MainView.NORMAL_VERTEX);
+			                    		} else {
+			                    			newVertex = (mxCell) graph.insertVertex(MainView.this.graph.getDefaultParent(), newVertexId, ctInvocation.getTarget().getType().getSimpleName() + "::\n" + ctInvocation.getExecutable().getSimpleName(), horizontalDistance, verticalDistance, vertexSize, 50, MainView.GENERATED_EVENT_VERTEX);
+			                    		}
+			                    		
+			                    		graph.insertEdge(graph.getDefaultParent(), UUID.randomUUID().toString(), "", lastVertex, newVertex, MainView.GENERATED_EDGE);										
+										
+			                    		//Update methodTemplateByVertice
+			                    		this.graphProject.updateMethodTemplateByVertice(newVertexId, ctInvocation.getTarget().getType() + "::" + ctInvocation.getExecutable());
+		                    		} else {
+		                    			newVertex = (mxCell) ((mxGraphModel)graph.getModel()).getCell(newVertexId);
+		                    		}
+		                    				                    		
+		                    		methodSequence.put(ctInvocation.getTarget().getType() + "::" + ctInvocation.getExecutable(), newVertexId);
+									
+									lastVertex = newVertex;
+	                    		
+			                    	horizontalDistance += vertexSize + 50;
+			                    	
+	                    		}
+		                    	
+							}
+	                    		                    	
+		    				System.out.println("---------\n---------\n---------");
+	                    	
+	                    }
+	                    
+	                    verticalDistance += 100;
+	                    
+	                    //link the last vertex created to the last vertex of the graph
+	                    mxCell lastGraphVertex = (mxCell) ((mxGraphModel)graph.getModel()).getCell(ID_END_VERTEX);
+	                    graph.insertEdge(graph.getDefaultParent(), UUID.randomUUID().toString(), "", lastVertex, lastGraphVertex, MainView.GENERATED_EDGE);	                    
+	                   
+	                    listaStatements.add(methodSequence);
+	                    
+	                    int longerArrayStatement = listaStatements.get(0).size();	                    
+	                    
+	                    for (LinkedHashMap statement : listaStatements) {
+							if (statement.size() > longerArrayStatement)
+								longerArrayStatement = statement.size();
+						}
+	                    
+	                    mxGeometry geo = (mxGeometry) graph.getCellGeometry(lastGraphVertex).clone();
+	                    geo.setY(50 * listaStatements.size());
+	                    geo.setX(200 + 200 * longerArrayStatement);
+	                    MainView.this.graph.getModel().setGeometry(lastGraphVertex, geo);
+	                    
+	                    mxCell firstVertex = (mxCell) ((mxGraphModel)graph.getModel()).getCell(ID_START_VERTEX);
+	                    
+	                    mxGeometry geo2 = (mxGeometry) graph.getCellGeometry(firstVertex).clone();
+	                    geo2.setY(50 * listaStatements.size());	                    
+	                    graph.getModel().setGeometry(firstVertex, geo2);
+	                    
+	                }
+	        	}
+			}
+			
+	    }
 
 		MainView.this.graph.getModel().endUpdate();
 		
@@ -830,7 +1000,7 @@ public class MainView extends JFrame {
 	private void extractCESs() {
 		if (this.graphProject != null) {
 			ArrayList<String> errorMsgs = GraphConverter.verifyESG(this.graph);
-			if(errorMsgs.isEmpty()) {			
+			if(errorMsgs.isEmpty()) {
 				try {
 					GraphSolver.solve(this.graph);
 	
