@@ -387,7 +387,7 @@ public class WebProjectPropertiesDialog extends JDialog {
 		JFileChooser fileChooser = new JFileChooser();
 
 		fileChooser.setDialogTitle("Select Web project test path");
-		fileChooser.setFileSelectionMode(JFileChooser.FILES_ONLY);
+		fileChooser.setFileSelectionMode(JFileChooser.DIRECTORIES_ONLY);
 		fileChooser.setAcceptAllFileFilterUsed(true);
 
 		int result = fileChooser.showOpenDialog(this);
@@ -507,12 +507,12 @@ public class WebProjectPropertiesDialog extends JDialog {
 			
 		}
 		
-		List<TestClass> testClasses = new ArrayList<TestClass>();
+		/*List<TestClass> testClasses = new ArrayList<TestClass>();
 		TestClass tc = new TestClass("Teste", this.txtWebProjectTestPath.getText());
 		testClasses.add(tc);
 		
 		this.graphProject.setTestClasses(testClasses);
-		
+		*/
 		this.graphProject.setWebProjectPageObject(pageObjectConcat);
 		this.graphProject.setDatabaseRegression(this.databaseRegression);
 

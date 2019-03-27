@@ -717,21 +717,24 @@ public class MainView extends JFrame {
 		/* PUXA TODOS OS ARQUIVOS DE UMA PASTA E CRIA UM MODELO SPOON (UTIL PARA OS PAGE OBJECTS)*/
 		Launcher launcher = new Launcher();
 		launcher.getEnvironment().setNoClasspath(true);
-		launcher.addInputResource("/Users/guimat/po/");
+		//launcher.addInputResource("/Users/guimat/po/");
+		launcher.addInputResource(graphProject.getWebProjectDirTestPath());
 		//launcher.getModelBuilder().setBinaryOutputDirectory(new File("./src/main/java/com/basic/dao/"));
 		launcher.buildModel();
 		
 		final CtModelImpl model = (CtModelImpl) launcher.getModel(); 
 		List<CtType<?>> classesList = launcher.getFactory().Class().getAll();
-				
+			
+		double verticalDistance = 50;
+		
+		//Essa lista serve para identificar caminhos pré-existentes
+		ArrayList<LinkedHashMap<String, String>> listaStatements = new ArrayList<LinkedHashMap<String, String>>();
+		
+		ArrayList<Double> countDistanceX = new ArrayList<Double>();
+		
 		for (CtType<?> type : classesList) {
 			
 			Set<CtMethod<?>> ctMethods = type.getMethods();
-			
-			double verticalDistance = 50;
-			
-			//Essa lista serve para identificar caminhos pré-existentes
-			ArrayList<LinkedHashMap<String, String>> listaStatements = new ArrayList<LinkedHashMap<String, String>>();
 			
 			for (CtMethod<?> method : ctMethods) { 
 									        	
@@ -746,7 +749,7 @@ public class MainView extends JFrame {
 	                		              	                	
 	                    List<CtStatement> statements = block.getStatements();
 	                    
-	                    ArrayList<String> statementsSequence = new ArrayList<String>();
+	                    ArrayList<String> statementsSequence = new ArrayList<String>();	                   	                    
 	                    
 	                    double horizontalDistance = 200;	                   
 	                    
@@ -792,22 +795,29 @@ public class MainView extends JFrame {
 		                    		
 		                    		if (listLastCommonVertex != null && listLastCommonVertex.size() > 0) {
 		                    			Set<Map.Entry<String, String>> mapSetSearchingReturnedList = listLastCommonVertex.entrySet();
-		                		        Map.Entry<String, String> lastElementAtSearchingIntoList = (Map.Entry<String, String>) mapSetSearchingReturnedList.toArray()[statementsSequence.size()-1];
 		                    			
-		                		        String lastElementAtSearchingForList = statementsSequence.get(statementsSequence.size()-1);
-		                		        
-		                		        if (lastElementAtSearchingForList.equals(lastElementAtSearchingIntoList.getKey())) {
+		                    			Map.Entry<String, String> lastElementAtSearchingIntoList = null;
+		                    			
+		                    			if (mapSetSearchingReturnedList.size() >= statementsSequence.size()) {
+		                    				
+		                    				lastElementAtSearchingIntoList = (Map.Entry<String, String>) mapSetSearchingReturnedList.toArray()[statementsSequence.size()-1];
+		                    			
+		                    			}
+		                    			
+		                    			String lastElementAtSearchingForList = statementsSequence.get(statementsSequence.size()-1);
+		                    			
+		                		        if (lastElementAtSearchingIntoList != null && lastElementAtSearchingForList.equals(lastElementAtSearchingIntoList.getKey())) {
 		                		        	
 		                		        	newVertexId = lastElementAtSearchingIntoList.getValue();
 		                		        	createNewVertex = false;
 		                		        	
-		                		        } else if (listLastCommonVertex.size() > 1 && statementsSequence.size() > 1) {
+		                		        } else if (mapSetSearchingReturnedList.size()+1 >= statementsSequence.size() && listLastCommonVertex.size() > 1 && statementsSequence.size() > 1) {
 		                		        	
 		                		        	Map.Entry<String, String> beforeLastElementAtSearchingIntoList = (Map.Entry<String, String>) mapSetSearchingReturnedList.toArray()[statementsSequence.size()-2];
 		                		        	String beforeLastElementAtSearchingForList = statementsSequence.get(statementsSequence.size()-2);
 		                		        	
 		                		        	if (beforeLastElementAtSearchingForList.equals(beforeLastElementAtSearchingIntoList.getKey())) {
-		                		        		newVertexId = lastElementAtSearchingIntoList.getValue();
+		                		        		lastVertex = (mxCell) ((mxGraphModel)graph.getModel()).getCell(beforeLastElementAtSearchingIntoList.getValue());
 		                		        	}
 		                		        }
 		                    		}
@@ -842,6 +852,8 @@ public class MainView extends JFrame {
 	                    	
 	                    }
 	                    
+	                    countDistanceX.add(horizontalDistance);
+	                    
 	                    verticalDistance += 100;
 	                    
 	                    //link the last vertex created to the last vertex of the graph
@@ -850,16 +862,16 @@ public class MainView extends JFrame {
 	                   
 	                    listaStatements.add(methodSequence);
 	                    
-	                    int longerArrayStatement = listaStatements.get(0).size();	                    
+	                    Double longerArrayStatement = countDistanceX.get(0);	                    
 	                    
-	                    for (LinkedHashMap statement : listaStatements) {
-							if (statement.size() > longerArrayStatement)
-								longerArrayStatement = statement.size();
+	                    for (Double distanceX : countDistanceX) {
+							if (distanceX > longerArrayStatement)
+								longerArrayStatement = distanceX;
 						}
 	                    
 	                    mxGeometry geo = (mxGeometry) graph.getCellGeometry(lastGraphVertex).clone();
 	                    geo.setY(50 * listaStatements.size());
-	                    geo.setX(200 + 200 * longerArrayStatement);
+	                    geo.setX(longerArrayStatement);
 	                    MainView.this.graph.getModel().setGeometry(lastGraphVertex, geo);
 	                    
 	                    mxCell firstVertex = (mxCell) ((mxGraphModel)graph.getModel()).getCell(ID_START_VERTEX);
