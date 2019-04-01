@@ -75,6 +75,7 @@ import spoon.Launcher;
 import spoon.reflect.CtModelImpl;
 import spoon.reflect.code.CtAssignment;
 import spoon.reflect.code.CtBlock;
+import spoon.reflect.code.CtConstructorCall;
 import spoon.reflect.code.CtInvocation;
 import spoon.reflect.code.CtLocalVariable;
 import spoon.reflect.code.CtStatement;
@@ -665,32 +666,81 @@ public class MainView extends JFrame {
 			return null;
 		
 		for (LinkedHashMap<String, String> linkedHashMap : searchingIntoSequences) {
-			
-			boolean control = true;
+		
 			int count = searchingBySequence.size()-1;
 			
-			while (control == true && count > 0 && linkedHashMap.size() > count) {
+			boolean control = true;
+			
+			if (linkedHashMap.size() > count) {
 				
-				Set<Map.Entry<String, String>> mapSetSearchingIntoList = linkedHashMap.entrySet();
-		        Map.Entry<String, String> elementAtSearchingIntoList = (Map.Entry<String, String>) mapSetSearchingIntoList.toArray()[count];
-		        
-		        String elementAtSearchingForList = searchingBySequence.get(count);
-		        
-		        if (!elementAtSearchingForList.equals(elementAtSearchingIntoList.getKey())) {
-		        	control = false;
-		        }
-
-				count--;
+				while (control == true && count >= 0) {
+					
+					Set<Map.Entry<String, String>> mapSetSearchingIntoList = linkedHashMap.entrySet();
+			        Map.Entry<String, String> elementAtSearchingIntoList = (Map.Entry<String, String>) mapSetSearchingIntoList.toArray()[count];
+			        
+			        String elementAtSearchingForList = searchingBySequence.get(count);
+			        
+			        if (!elementAtSearchingForList.equals(elementAtSearchingIntoList.getValue())) {
+			        	control = false;
+			        }
+	
+					count--;
+					
+				}
+				
+				//Nesse caso, retorna a lista
+				if (control == true) 
+					return linkedHashMap;
 				
 			}
-			
-			//Nesse caso, retorna a lista
-			if (control == true) 
-				return linkedHashMap;
 			
 		}
 				
 		return null;
+	}
+	
+	private boolean isAssert(CtElement ctElement) {
+		
+		if (ctElement instanceof CtInvocation) {
+			CtInvocation ctInvocation = (CtInvocation) ctElement;
+			if (ctInvocation.toString().contains("org.junit.Assert") || (ctInvocation.toString().contains("junit.framework.Assert")) || ctInvocation.toString().contains("assertEquals") || ctInvocation.toString().contains("assertFalse") || ctInvocation.toString().contains("assertTrue")) {
+				return true;
+			}
+		} else if (ctElement instanceof CtConstructorCall) {
+			CtConstructorCall ctConstructorCall = (CtConstructorCall) ctElement;
+			if (ctConstructorCall.toString().contains("org.junit.Assert") || (ctConstructorCall.toString().contains("junit.framework.Assert")) || ctConstructorCall.toString().contains("assertEquals") || ctConstructorCall.toString().contains("assertFalse") || ctConstructorCall.toString().contains("assertTrue")) {
+				return true;
+			}
+		}
+		
+		
+		
+		return false;
+	}
+	
+	private boolean relatedToAProjectClass(CtElement ctElement, ArrayList<String> classesName) {
+		
+		if (ctElement instanceof CtInvocation) {
+			CtInvocation ctInvocation = (CtInvocation) ctElement;
+			/*if ((ctInvocation.getExecutable().getType() != null && classesName.contains(ctInvocation.getExecutable().getType().getSimpleName())) || 
+					(ctInvocation.getTarget().getType() != null && classesName.contains(ctInvocation.getTarget().getType().getSimpleName())))
+				return true;
+			*/
+			if (ctInvocation.getTarget().getType() != null && classesName.contains(ctInvocation.getTarget().getType().getSimpleName())) {
+				if ((ctInvocation.getExecutable().getType() != null) && (classesName.contains(ctInvocation.getExecutable().getType().getSimpleName()) || (ctInvocation.getExecutable().getType().getSimpleName().contains("void")))) {
+					return true;
+				}
+			}
+				
+		} else if (ctElement instanceof CtConstructorCall) {
+			CtConstructorCall ctConstructorCall = (CtConstructorCall) ctElement;
+			if (ctConstructorCall.getExecutable().getType() != null && classesName.contains(ctConstructorCall.getExecutable().getType().getSimpleName()))
+				return true;
+		}
+		
+		
+		
+		return false;
 	}
 	
 	private void newWebAppProject() {
@@ -724,6 +774,12 @@ public class MainView extends JFrame {
 		
 		final CtModelImpl model = (CtModelImpl) launcher.getModel(); 
 		List<CtType<?>> classesList = launcher.getFactory().Class().getAll();
+		
+		ArrayList<String> classesName = new ArrayList<String>();
+		
+		for (CtType<?> type : classesList) {
+			classesName.add(type.getSimpleName());
+		}
 			
 		double verticalDistance = 50;
 		
@@ -763,27 +819,56 @@ public class MainView extends JFrame {
 	                    	
 	                    	//Check if the statement is an Assert
 	                    	if (elementsFromStatement.size() > 0 && elementsFromStatement.get(elementsFromStatement.size()-1) instanceof CtInvocation) {	                    		
-	                    		CtInvocation isAssert = (CtInvocation) elementsFromStatement.get(elementsFromStatement.size()-1);
+	                    		CtInvocation checkIfIsAssert = (CtInvocation) elementsFromStatement.get(elementsFromStatement.size()-1);
 	                    	
 	                    		//If an Assert, remove all related invocations
-	                    		if (isAssert.toString().contains("org.junit.Assert")) {
+	                    		if (isAssert(checkIfIsAssert)) {
 		                    		elementsFromStatement.clear();
-		                    		elementsFromStatement.add(isAssert);
+		                    		elementsFromStatement.add(checkIfIsAssert);
 		                    	}
 	                    	}
 	                    	
 	                    	for (CtElement ctElement : elementsFromStatement) {
 	                    		
-	                    		if (ctElement instanceof CtInvocation) {
-	                    		
-		                    		CtInvocation ctInvocation = (CtInvocation) ctElement;
+	                    		//if (ctElement instanceof CtInvocation && (isAssert((CtInvocation)ctElement) || returnAProjectClass((CtInvocation)ctElement, classesName))) {
+	                    		if ((ctElement instanceof CtInvocation || ctElement instanceof CtConstructorCall) && (isAssert(ctElement) || relatedToAProjectClass(ctElement, classesName))) {
+	                    			
+	                    			CtInvocation ctInvocation = null;
+	                    			CtConstructorCall ctConstructorCall = null;
+	                    			
+	                    			String methodUniqueName = "";
+	                    			String vertexLabel = "";
+	                    			String vertexType = MainView.GENERATED_EVENT_VERTEX;
+	                    			double vertexSize = 0;
+	                    			
+	                    			if (ctElement instanceof CtInvocation) {
+		                    			ctInvocation = (CtInvocation) ctElement;
+		                    			methodUniqueName = ctInvocation.getTarget().getType() + "::" + ctInvocation.getExecutable();
+		                    			vertexSize = ctInvocation.getExecutable().getSimpleName().toString().length() * 3 + 120;
+		                    			if (isAssert(ctInvocation)) {
+		                    				vertexLabel = "ASSERT\n" + ctInvocation.getExecutable().getSimpleName();
+		                    				vertexType = MainView.NORMAL_VERTEX;
+		                    			} else {		              
+		                    				if (ctInvocation.getTarget().getType() != null)
+		                    					vertexLabel = ctInvocation.getTarget().getType().getSimpleName() + "::\n" + ctInvocation.getExecutable().getSimpleName();
+		                    				else
+		                    					vertexLabel = ctInvocation.getTarget() + "::\n" + ctInvocation.getExecutable().getSimpleName();
+		                    					
+		                    			}
+		                    			
+	                    			} else {
+	                    				ctConstructorCall = (CtConstructorCall) ctElement;
+	                    				methodUniqueName = ctConstructorCall.getExecutable().getType() + "::" + ctConstructorCall.getExecutable();
+	                    				vertexSize = ctConstructorCall.getExecutable().getSimpleName().toString().length() * 3 + 120;
+	                    				if (isAssert(ctConstructorCall)) {
+		                    				vertexLabel = "ASSERT\n" + ctConstructorCall.getExecutable().getSimpleName();
+		                    				vertexType = MainView.NORMAL_VERTEX;
+		                    			} else {		                    			
+		                    				vertexLabel = ctConstructorCall.getExecutable().getType().getSimpleName() + "::\n new " + ctConstructorCall.getExecutable().getType().getSimpleName();
+		                    			}
+	                    			}
 		                    		
-		                    		//Add to sequence control array
-		                    		//statementsSequence.add(ctInvocation.getTarget().getType() + "::" + ctInvocation.getExecutable());
-		                    		
-		                    		double vertexSize = ctInvocation.getExecutable().getSimpleName().toString().length() * 3 + 120;
-		                    		
-		                    		statementsSequence.add(ctInvocation.getTarget().getType() + "::" + ctInvocation.getExecutable());
+		                    		statementsSequence.add(methodUniqueName);
 		                    		
 		                    		LinkedHashMap<String, String> listLastCommonVertex = getPreviousVerticesList(listaStatements, statementsSequence);
 
@@ -806,9 +891,9 @@ public class MainView extends JFrame {
 		                    			
 		                    			String lastElementAtSearchingForList = statementsSequence.get(statementsSequence.size()-1);
 		                    			
-		                		        if (lastElementAtSearchingIntoList != null && lastElementAtSearchingForList.equals(lastElementAtSearchingIntoList.getKey())) {
+		                		        if (lastElementAtSearchingIntoList != null && lastElementAtSearchingForList.equals(lastElementAtSearchingIntoList.getValue())) {
 		                		        	
-		                		        	newVertexId = lastElementAtSearchingIntoList.getValue();
+		                		        	newVertexId = lastElementAtSearchingIntoList.getKey();
 		                		        	createNewVertex = false;
 		                		        	
 		                		        } else if (mapSetSearchingReturnedList.size()+1 >= statementsSequence.size() && listLastCommonVertex.size() > 1 && statementsSequence.size() > 1) {
@@ -816,29 +901,25 @@ public class MainView extends JFrame {
 		                		        	Map.Entry<String, String> beforeLastElementAtSearchingIntoList = (Map.Entry<String, String>) mapSetSearchingReturnedList.toArray()[statementsSequence.size()-2];
 		                		        	String beforeLastElementAtSearchingForList = statementsSequence.get(statementsSequence.size()-2);
 		                		        	
-		                		        	if (beforeLastElementAtSearchingForList.equals(beforeLastElementAtSearchingIntoList.getKey())) {
-		                		        		lastVertex = (mxCell) ((mxGraphModel)graph.getModel()).getCell(beforeLastElementAtSearchingIntoList.getValue());
+		                		        	if (beforeLastElementAtSearchingForList.equals(beforeLastElementAtSearchingIntoList.getValue())) {
+		                		        		lastVertex = (mxCell) ((mxGraphModel)graph.getModel()).getCell(beforeLastElementAtSearchingIntoList.getKey());
 		                		        	}
 		                		        }
 		                    		}
 		                    		
 		                    		if (createNewVertex) {		                    		
-			                    		//Se é assert, o label e a cor do vértice é diferente
-			                    		if (ctInvocation.toString().contains("org.junit.Assert")) {
-			                    			newVertex = (mxCell) graph.insertVertex(MainView.this.graph.getDefaultParent(), newVertexId, "ASSERT\n" + ctInvocation.getExecutable().getSimpleName(), horizontalDistance, verticalDistance, vertexSize, 50, MainView.NORMAL_VERTEX);
-			                    		} else {
-			                    			newVertex = (mxCell) graph.insertVertex(MainView.this.graph.getDefaultParent(), newVertexId, ctInvocation.getTarget().getType().getSimpleName() + "::\n" + ctInvocation.getExecutable().getSimpleName(), horizontalDistance, verticalDistance, vertexSize, 50, MainView.GENERATED_EVENT_VERTEX);
-			                    		}
+			                    		
+		                    			newVertex = (mxCell) graph.insertVertex(MainView.this.graph.getDefaultParent(), newVertexId, vertexLabel, horizontalDistance, verticalDistance, vertexSize, 50, vertexType);
 			                    		
 			                    		graph.insertEdge(graph.getDefaultParent(), UUID.randomUUID().toString(), "", lastVertex, newVertex, MainView.GENERATED_EDGE);										
 										
 			                    		//Update methodTemplateByVertice
-			                    		this.graphProject.updateMethodTemplateByVertice(newVertexId, ctInvocation.getTarget().getType() + "::" + ctInvocation.getExecutable());
+			                    		this.graphProject.updateMethodTemplateByVertice(newVertexId, methodUniqueName);
 		                    		} else {
 		                    			newVertex = (mxCell) ((mxGraphModel)graph.getModel()).getCell(newVertexId);
 		                    		}
 		                    				                    		
-		                    		methodSequence.put(ctInvocation.getTarget().getType() + "::" + ctInvocation.getExecutable(), newVertexId);
+		                    		methodSequence.put(newVertexId, methodUniqueName);
 									
 									lastVertex = newVertex;
 	                    		

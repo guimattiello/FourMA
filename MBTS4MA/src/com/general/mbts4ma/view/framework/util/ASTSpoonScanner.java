@@ -3,6 +3,7 @@ package com.general.mbts4ma.view.framework.util;
 import java.util.ArrayList;
 
 import spoon.reflect.code.CtAssignment;
+import spoon.reflect.code.CtConstructorCall;
 import spoon.reflect.code.CtInvocation;
 import spoon.reflect.code.CtLocalVariable;
 import spoon.reflect.code.CtStatement;
@@ -42,6 +43,12 @@ public class ASTSpoonScanner extends CtScanner {
     		public <T> void visitCtInvocation(CtInvocation<T> invocation) {
     			super.visitCtInvocation(invocation);
     			add(invocation);
+    		}
+    		
+    		@Override
+    		public <T> void visitCtConstructorCall(CtConstructorCall<T> constructorCall) {
+    			super.visitCtConstructorCall(constructorCall);
+    			add(constructorCall);
     		}
     		
     	};
