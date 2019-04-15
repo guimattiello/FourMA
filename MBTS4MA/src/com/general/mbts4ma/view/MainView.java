@@ -97,6 +97,8 @@ public class MainView extends JFrame {
 	public static final String EVENT_VERTEX = "EVENT_VERTEX";
 	public static final String PARAMETER_VERTEX = "PARAMETER_VERTEX";
 	public static final String GENERATED_EVENT_VERTEX = "GENERATED_EVENT_VERTEX";
+	public static final String WEB_GENERATED_NORMAL_EVENT_VERTEX = "WEB_GENERATED_NORMAL_EVENT_VERTEX";
+	public static final String WEB_GENERATED_ASSERT_EVENT_VERTEX = "WEB_GENERATED_ASSERT_EVENT_VERTEX";
 	public static final String START_VERTEX = "START_VERTEX";
 	public static final String END_VERTEX = "END_VERTEX";
 
@@ -492,7 +494,7 @@ public class MainView extends JFrame {
 							popup.add(edgeTemplatesMenu);
 							
 						} else { //Senão é web project
-							ArrayList<String> pageObjectsPath = new ArrayList(Arrays.asList(graphProject.getWebProjectPageObject().split(",")));
+							//ArrayList<String> pageObjectsPath = new ArrayList(Arrays.asList(graphProject.getWebProjectPageObject().split(",")));
 							
 							JMenu pageObjectsTemplatesMenu;
 							
@@ -509,8 +511,6 @@ public class MainView extends JFrame {
 								pageObjectsTemplatesMenu = new JMenu(fileNamePageObject);
 								
 								metodosWeb = new LinkedHashMap<String, String>();
-								
-								pageObjectNext.getParsedClass().getAllMethods();
 								
 								Set<CtMethod> ctMethods = pageObjectNext.getParsedClass().getMethods();
 								
@@ -718,23 +718,26 @@ public class MainView extends JFrame {
 		return false;
 	}
 	
-	private boolean relatedToAProjectClass(CtElement ctElement, ArrayList<String> classesName) {
+	private boolean relatedToAProjectClass(CtElement ctElement) {
+		
+		ArrayList<String> pageObjectsName = new ArrayList<String>();
+		
+		for (PageObject pageObject : this.graphProject.getPageObjects()) {
+			pageObjectsName.add(pageObject.getClassName());
+		}
 		
 		if (ctElement instanceof CtInvocation) {
 			CtInvocation ctInvocation = (CtInvocation) ctElement;
-			/*if ((ctInvocation.getExecutable().getType() != null && classesName.contains(ctInvocation.getExecutable().getType().getSimpleName())) || 
-					(ctInvocation.getTarget().getType() != null && classesName.contains(ctInvocation.getTarget().getType().getSimpleName())))
-				return true;
-			*/
-			if (ctInvocation.getTarget().getType() != null && classesName.contains(ctInvocation.getTarget().getType().getSimpleName())) {
-				if ((ctInvocation.getExecutable().getType() != null) && (classesName.contains(ctInvocation.getExecutable().getType().getSimpleName()) || (ctInvocation.getExecutable().getType().getSimpleName().contains("void")))) {
+			
+			if (ctInvocation.getTarget().getType() != null && pageObjectsName.contains(ctInvocation.getTarget().getType().getSimpleName())) {
+				//if ((ctInvocation.getExecutable().getType() != null) && (classesName.contains(ctInvocation.getExecutable().getType().getSimpleName()) || (ctInvocation.getExecutable().getType().getSimpleName().contains("void")))) {
 					return true;
-				}
+				//}
 			}
 				
 		} else if (ctElement instanceof CtConstructorCall) {
 			CtConstructorCall ctConstructorCall = (CtConstructorCall) ctElement;
-			if (ctConstructorCall.getExecutable().getType() != null && classesName.contains(ctConstructorCall.getExecutable().getType().getSimpleName()))
+			if (ctConstructorCall.getExecutable().getType() != null && pageObjectsName.contains(ctConstructorCall.getExecutable().getType().getSimpleName()))
 				return true;
 		}
 		
@@ -760,10 +763,6 @@ public class MainView extends JFrame {
 			this.createBasicGraph();
 		}
 		
-		for (PageObject po : graphProject.getPageObjects()) {
-			System.out.println(po.getParsedClass());
-		}
-		
 		/* PUXA TODOS OS ARQUIVOS DE UMA PASTA E CRIA UM MODELO SPOON (UTIL PARA OS PAGE OBJECTS)*/
 		Launcher launcher = new Launcher();
 		launcher.getEnvironment().setNoClasspath(true);
@@ -774,12 +773,6 @@ public class MainView extends JFrame {
 		
 		final CtModelImpl model = (CtModelImpl) launcher.getModel(); 
 		List<CtType<?>> classesList = launcher.getFactory().Class().getAll();
-		
-		ArrayList<String> classesName = new ArrayList<String>();
-		
-		for (CtType<?> type : classesList) {
-			classesName.add(type.getSimpleName());
-		}
 			
 		double verticalDistance = 50;
 		
@@ -812,8 +805,12 @@ public class MainView extends JFrame {
 	                    mxCell lastVertex = (mxCell) ((mxGraphModel)graph.getModel()).getCell(ID_START_VERTEX); 	                    	                    
 	                    	                    
 	                    for (CtStatement statement : statements) {
-	                    		                    	
-	                    	ArrayList<CtElement> elementsFromStatement = (new ASTSpoonScanner()).visitStatementAST(statement);	     	                    	
+	                    	
+	                    	//ASTSpoonScanner Class cleans invocations arguments list
+	                    	ArrayList<CtElement> elementsFromStatementWithArguments = (new ASTSpoonScanner()).visitStatementAST(statement);	     	                    	
+	                    	
+	                    	//Statements without arguments
+	                    	ArrayList<CtElement> elementsFromStatement = (new ASTSpoonScanner()).visitStatementAST(statement);	                    	
 	                    	
 	                    	System.out.println(elementsFromStatement);
 	                    	
@@ -831,14 +828,14 @@ public class MainView extends JFrame {
 	                    	for (CtElement ctElement : elementsFromStatement) {
 	                    		
 	                    		//if (ctElement instanceof CtInvocation && (isAssert((CtInvocation)ctElement) || returnAProjectClass((CtInvocation)ctElement, classesName))) {
-	                    		if ((ctElement instanceof CtInvocation || ctElement instanceof CtConstructorCall) && (isAssert(ctElement) || relatedToAProjectClass(ctElement, classesName))) {
+	                    		if ((ctElement instanceof CtInvocation || ctElement instanceof CtConstructorCall) && (isAssert(ctElement) || relatedToAProjectClass(ctElement))) {
 	                    			
-	                    			CtInvocation ctInvocation = null;
+	                    			CtInvocation ctInvocation = null;	                    			
 	                    			CtConstructorCall ctConstructorCall = null;
 	                    			
 	                    			String methodUniqueName = "";
 	                    			String vertexLabel = "";
-	                    			String vertexType = MainView.GENERATED_EVENT_VERTEX;
+	                    			String vertexType = MainView.WEB_GENERATED_NORMAL_EVENT_VERTEX;
 	                    			double vertexSize = 0;
 	                    			
 	                    			if (ctElement instanceof CtInvocation) {
@@ -847,7 +844,7 @@ public class MainView extends JFrame {
 		                    			vertexSize = ctInvocation.getExecutable().getSimpleName().toString().length() * 3 + 120;
 		                    			if (isAssert(ctInvocation)) {
 		                    				vertexLabel = "ASSERT\n" + ctInvocation.getExecutable().getSimpleName();
-		                    				vertexType = MainView.NORMAL_VERTEX;
+		                    				vertexType = MainView.WEB_GENERATED_ASSERT_EVENT_VERTEX;
 		                    			} else {		              
 		                    				if (ctInvocation.getTarget().getType() != null)
 		                    					vertexLabel = ctInvocation.getTarget().getType().getSimpleName() + "::\n" + ctInvocation.getExecutable().getSimpleName();
@@ -862,7 +859,7 @@ public class MainView extends JFrame {
 	                    				vertexSize = ctConstructorCall.getExecutable().getSimpleName().toString().length() * 3 + 120;
 	                    				if (isAssert(ctConstructorCall)) {
 		                    				vertexLabel = "ASSERT\n" + ctConstructorCall.getExecutable().getSimpleName();
-		                    				vertexType = MainView.NORMAL_VERTEX;
+		                    				vertexType = MainView.WEB_GENERATED_ASSERT_EVENT_VERTEX;
 		                    			} else {		                    			
 		                    				vertexLabel = ctConstructorCall.getExecutable().getType().getSimpleName() + "::\n new " + ctConstructorCall.getExecutable().getType().getSimpleName();
 		                    			}
@@ -911,8 +908,8 @@ public class MainView extends JFrame {
 			                    		
 		                    			newVertex = (mxCell) graph.insertVertex(MainView.this.graph.getDefaultParent(), newVertexId, vertexLabel, horizontalDistance, verticalDistance, vertexSize, 50, vertexType);
 			                    		
-			                    		graph.insertEdge(graph.getDefaultParent(), UUID.randomUUID().toString(), "", lastVertex, newVertex, MainView.GENERATED_EDGE);										
-										
+			                    		graph.insertEdge(graph.getDefaultParent(), UUID.randomUUID().toString(), "", lastVertex, newVertex, MainView.GENERATED_EDGE);																				
+			                    		
 			                    		//Update methodTemplateByVertice
 			                    		this.graphProject.updateMethodTemplateByVertice(newVertexId, methodUniqueName);
 		                    		} else {
@@ -1410,6 +1407,9 @@ public class MainView extends JFrame {
 		generatedEdge.put(mxConstants.STYLE_FONTSIZE, "10");
 		generatedEdge.put(mxConstants.STYLE_VERTICAL_ALIGN, mxConstants.ALIGN_MIDDLE);
 		generatedEdge.put(mxConstants.STYLE_ALIGN, mxConstants.ALIGN_CENTER);
+		generatedEdge.put(mxConstants.STYLE_EDITABLE, false);
+		generatedEdge.put(mxConstants.STYLE_DELETABLE, false);
+		generatedEdge.put(mxConstants.STYLE_MOVABLE, false);
 
 		Map<String, Object> startVertex = new HashMap<String, Object>();
 		startVertex.put(mxConstants.STYLE_SHAPE, mxConstants.SHAPE_ELLIPSE);
@@ -1478,6 +1478,36 @@ public class MainView extends JFrame {
 		generatedEventVertex.put(mxConstants.STYLE_ROUNDED, true);
 		generatedEventVertex.put(mxConstants.STYLE_EDGE, mxConstants.EDGESTYLE_ENTITY_RELATION);
 
+		Map<String, Object> webGeneratedNormalEventVertex = new HashMap<String, Object>();
+		webGeneratedNormalEventVertex.put(mxConstants.STYLE_SHAPE, mxConstants.SHAPE_RECTANGLE);
+		webGeneratedNormalEventVertex.put(mxConstants.STYLE_FILLCOLOR, "#c2f0f0");
+		webGeneratedNormalEventVertex.put(mxConstants.STYLE_STROKECOLOR, "#996699");
+		webGeneratedNormalEventVertex.put(mxConstants.STYLE_STROKEWIDTH, "2");
+		webGeneratedNormalEventVertex.put(mxConstants.STYLE_FONTCOLOR, "#000000");
+		webGeneratedNormalEventVertex.put(mxConstants.STYLE_FONTFAMILY, "Verdana");
+		webGeneratedNormalEventVertex.put(mxConstants.STYLE_FONTSTYLE, mxConstants.FONT_ITALIC);
+		webGeneratedNormalEventVertex.put(mxConstants.STYLE_FONTSIZE, "10");
+		webGeneratedNormalEventVertex.put(mxConstants.STYLE_ROUNDED, true);
+		webGeneratedNormalEventVertex.put(mxConstants.STYLE_EDGE, mxConstants.EDGESTYLE_ENTITY_RELATION);
+		webGeneratedNormalEventVertex.put(mxConstants.STYLE_EDITABLE, false);
+		webGeneratedNormalEventVertex.put(mxConstants.STYLE_MOVABLE, false);
+		webGeneratedNormalEventVertex.put(mxConstants.STYLE_DELETABLE, false);
+		
+		Map<String, Object> webGeneratedAssertEventVertex = new HashMap<String, Object>();
+		webGeneratedAssertEventVertex.put(mxConstants.STYLE_SHAPE, mxConstants.SHAPE_RECTANGLE);
+		webGeneratedAssertEventVertex.put(mxConstants.STYLE_FILLCOLOR, "#6fdcdc");
+		webGeneratedAssertEventVertex.put(mxConstants.STYLE_STROKECOLOR, "#996699");
+		webGeneratedAssertEventVertex.put(mxConstants.STYLE_STROKEWIDTH, "2");
+		webGeneratedAssertEventVertex.put(mxConstants.STYLE_FONTCOLOR, "#000000");
+		webGeneratedAssertEventVertex.put(mxConstants.STYLE_FONTFAMILY, "Verdana");
+		webGeneratedAssertEventVertex.put(mxConstants.STYLE_FONTSTYLE, mxConstants.FONT_ITALIC);
+		webGeneratedAssertEventVertex.put(mxConstants.STYLE_FONTSIZE, "10");
+		webGeneratedAssertEventVertex.put(mxConstants.STYLE_ROUNDED, true);
+		webGeneratedAssertEventVertex.put(mxConstants.STYLE_EDGE, mxConstants.EDGESTYLE_ENTITY_RELATION);
+		webGeneratedAssertEventVertex.put(mxConstants.STYLE_EDITABLE, false);
+		webGeneratedAssertEventVertex.put(mxConstants.STYLE_MOVABLE, false);
+		webGeneratedAssertEventVertex.put(mxConstants.STYLE_DELETABLE, false);
+		
 		stylesheet.setDefaultEdgeStyle(edge);
 
 		stylesheet.putCellStyle(MARKED_EDGE, markedEdge);
@@ -1495,6 +1525,10 @@ public class MainView extends JFrame {
 		stylesheet.putCellStyle(PARAMETER_VERTEX, parameterVertex);
 
 		stylesheet.putCellStyle(GENERATED_EVENT_VERTEX, generatedEventVertex);
+		
+		stylesheet.putCellStyle(WEB_GENERATED_NORMAL_EVENT_VERTEX, webGeneratedNormalEventVertex);
+
+		stylesheet.putCellStyle(WEB_GENERATED_ASSERT_EVENT_VERTEX, webGeneratedAssertEventVertex);
 
 		this.graph.setStylesheet(stylesheet);
 

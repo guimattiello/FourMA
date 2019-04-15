@@ -34,6 +34,13 @@ import com.general.mbts4ma.view.framework.util.PageObject;
 import com.general.mbts4ma.view.framework.util.TestClass;
 import com.general.mbts4ma.view.framework.vo.GraphProjectVO;
 
+import spoon.Launcher;
+import spoon.reflect.CtModelImpl;
+import spoon.reflect.declaration.CtClass;
+import spoon.reflect.declaration.CtType;
+import spoon.reflect.visitor.filter.AnnotationFilter;
+import spoon.reflect.visitor.filter.TypeFilter;
+
 public class WebProjectPropertiesDialog extends JDialog {
 
 	private final JPanel contentPanel = new JPanel();
@@ -49,6 +56,8 @@ public class WebProjectPropertiesDialog extends JDialog {
 	private JButton btnSelectPageObject;
 	private JButton btnUpdatePageObject;
 	private JButton btnDatabaseProperties;
+	
+	private List<CtType<?>> classesList;
 
 	private JTextField txtDBHost;
 	private JTextField txtDBName;
@@ -171,7 +180,7 @@ public class WebProjectPropertiesDialog extends JDialog {
 		this.btnSelectWebProjectTestPath.addActionListener(new ActionListener() {
 			@Override
 			public void actionPerformed(ActionEvent e) {
-				WebProjectPropertiesDialog.this.selectWebProjectTestClassPath();
+				WebProjectPropertiesDialog.this.selectWebProjectTestPath();
 			}
 		});
 
@@ -197,8 +206,25 @@ public class WebProjectPropertiesDialog extends JDialog {
 		lblMainTestingActivity.setFont(new Font("Verdana", Font.PLAIN, 12));
 
 		DefaultTableModel model = new DefaultTableModel();
-		this.tablePageObjects = new JTable(model);
+		this.tablePageObjects = new JTable(model){
+
+            private static final long serialVersionUID = 1L;
+
+            @Override
+            public Class getColumnClass(int column) {
+                switch (column) {
+                    case 0:
+                        return String.class;
+                    default:
+                        return Boolean.class;
+                }
+            }
+        };
+        this.tablePageObjects.setPreferredScrollableViewportSize(this.tablePageObjects.getPreferredSize());
+        JScrollPane scrollPane = new JScrollPane(this.tablePageObjects);
+        
 		model.addColumn("Page Object");
+		model.addColumn("is a PageObject class?");
 		
 		this.btnSelectPageObject = new JButton("");
 		this.btnSelectPageObject.setToolTipText("Select New Page Objects File");
@@ -238,7 +264,7 @@ public class WebProjectPropertiesDialog extends JDialog {
 					).
 					addComponent(this.btnDatabaseProperties, GroupLayout.PREFERRED_SIZE, 366, GroupLayout.PREFERRED_SIZE).					
 					addGroup(Alignment.TRAILING, gl_contentPanel.createSequentialGroup().
-						addComponent(this.tablePageObjects, GroupLayout.DEFAULT_SIZE, 366, Short.MAX_VALUE).
+						addComponent(scrollPane, GroupLayout.DEFAULT_SIZE, 366, Short.MAX_VALUE).
 						addPreferredGap(ComponentPlacement.UNRELATED).
 						addComponent(this.btnSelectPageObject, GroupLayout.PREFERRED_SIZE, 36, GroupLayout.PREFERRED_SIZE).
 						addPreferredGap(ComponentPlacement.RELATED).
@@ -287,7 +313,7 @@ public class WebProjectPropertiesDialog extends JDialog {
 				addPreferredGap(ComponentPlacement.RELATED).				
 				addGroup(gl_contentPanel.createParallelGroup(Alignment.LEADING).
 					addGroup(gl_contentPanel.createSequentialGroup().
-						addComponent(this.tablePageObjects, GroupLayout.PREFERRED_SIZE, 140, GroupLayout.PREFERRED_SIZE).addGap(12)
+						addComponent(scrollPane, GroupLayout.PREFERRED_SIZE, 140, GroupLayout.PREFERRED_SIZE).addGap(12)
 					).
 					addComponent(btnRemovePageObject, GroupLayout.PREFERRED_SIZE, 36, GroupLayout.PREFERRED_SIZE).
 					addComponent(this.btnSelectPageObject, GroupLayout.PREFERRED_SIZE, 36, GroupLayout.PREFERRED_SIZE).
@@ -372,22 +398,6 @@ public class WebProjectPropertiesDialog extends JDialog {
 
 		fileChooser.setDialogTitle("Select Web project test path");
 		fileChooser.setFileSelectionMode(JFileChooser.DIRECTORIES_ONLY);
-		fileChooser.setAcceptAllFileFilterUsed(false);
-
-		int result = fileChooser.showOpenDialog(this);
-
-		if (result == JFileChooser.APPROVE_OPTION) {
-			String path = fileChooser.getSelectedFile().toString();
-
-			this.txtWebProjectTestPath.setText(path);
-		}
-	}
-
-	private void selectWebProjectTestClassPath() {
-		JFileChooser fileChooser = new JFileChooser();
-
-		fileChooser.setDialogTitle("Select Web project test path");
-		fileChooser.setFileSelectionMode(JFileChooser.DIRECTORIES_ONLY);
 		fileChooser.setAcceptAllFileFilterUsed(true);
 
 		int result = fileChooser.showOpenDialog(this);
@@ -396,7 +406,30 @@ public class WebProjectPropertiesDialog extends JDialog {
 			String path = fileChooser.getSelectedFile().toString();
 
 			this.txtWebProjectTestPath.setText(path);
+			
+			Launcher launcher = new Launcher();
+			launcher.getEnvironment().setNoClasspath(true);
+			launcher.addInputResource(path);
+			launcher.buildModel();
+			
+			final CtModelImpl model = (CtModelImpl) launcher.getModel(); 
+			classesList = launcher.getFactory().Class().getAll();
+			
+			for (CtType<?> clazz : classesList) {
+				
+				DefaultTableModel modelTable = (DefaultTableModel) this.tablePageObjects.getModel();
+				modelTable.addRow(new Object[]{clazz.getSimpleName(), isAPossiblePageObjectClass(clazz)});
+				
+			}
 		}
+	}
+	
+	private boolean isAPossiblePageObjectClass(CtType<?> pageObjectClass) {
+		
+		if (pageObjectClass.getSimpleName().contains("Page") || pageObjectClass.getPath().toString().contains("po"))
+			return true;
+		
+		return false;
 	}
 	
 	private void databaseProperties() {
@@ -429,9 +462,9 @@ public class WebProjectPropertiesDialog extends JDialog {
 				DefaultTableModel model = (DefaultTableModel) this.tablePageObjects.getModel();
 				model.addRow(new Object[]{name});
 				
-				PageObject newPageObject = new PageObject(name, path);
+				//PageObject newPageObject = new PageObject(name, path);
 				
-				pageObjects.add(newPageObject);
+				//pageObjects.add(newPageObject);
 			}
 			
 		}
@@ -491,9 +524,29 @@ public class WebProjectPropertiesDialog extends JDialog {
 		this.graphProject.setDescription(this.txtDescription.getText());
 		this.graphProject.setWebProjectURL(this.txtWebProjectURL.getText());
 		//this.graphProject.setWebProjectPageObject(this.txtWebProjectPageObject.getText());
-		this.graphProject.setPageObjects(this.pageObjects);
+		
 		this.graphProject.setWebProjectDirTestPath(this.txtWebProjectTestPath.getText());
+		
+		ArrayList<String> pageObjectsName = new ArrayList<String>();
+		
+		for (int i = 0; i < this.tablePageObjects.getRowCount(); i++) {
+			if (this.tablePageObjects.getValueAt(i, 1) == Boolean.TRUE)
+				pageObjectsName.add(this.tablePageObjects.getValueAt(i, 0).toString());
+		}
+		
+		for (CtType<?> clazz : classesList) {
+			if (pageObjectsName.contains(clazz.getSimpleName())) {
 				
+				PageObject newPageObject = new PageObject(clazz.getSimpleName(), ((CtClass)clazz));
+				
+				pageObjects.add(newPageObject);
+				
+			}
+		}
+		
+		this.graphProject.setPageObjects(this.pageObjects);
+		
+		/*
 		String pageObjectConcat = "";
 		
 		for (Iterator iterator = pageObjects.iterator(); iterator.hasNext();) {
@@ -505,7 +558,7 @@ public class WebProjectPropertiesDialog extends JDialog {
 				pageObjectConcat += ",";
 			}
 			
-		}
+		}*/
 		
 		/*List<TestClass> testClasses = new ArrayList<TestClass>();
 		TestClass tc = new TestClass("Teste", this.txtWebProjectTestPath.getText());
@@ -513,7 +566,7 @@ public class WebProjectPropertiesDialog extends JDialog {
 		
 		this.graphProject.setTestClasses(testClasses);
 		*/
-		this.graphProject.setWebProjectPageObject(pageObjectConcat);
+		//this.graphProject.setWebProjectPageObject(pageObjectConcat);
 		this.graphProject.setDatabaseRegression(this.databaseRegression);
 
 		this.dispose();

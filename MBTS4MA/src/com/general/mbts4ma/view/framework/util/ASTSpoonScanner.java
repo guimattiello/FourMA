@@ -41,7 +41,8 @@ public class ASTSpoonScanner extends CtScanner {
     		
     		@Override
     		public <T> void visitCtInvocation(CtInvocation<T> invocation) {
-    			super.visitCtInvocation(invocation);
+    			super.visitCtInvocation(invocation);    		
+    			invocation.getArguments().clear();
     			add(invocation);
     		}
     		

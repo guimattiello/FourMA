@@ -4,6 +4,7 @@ import java.io.File;
 
 import spoon.Launcher;
 import spoon.reflect.declaration.CtClass;
+import spoon.reflect.declaration.CtType;
 
 public class PageObject {
 
@@ -12,14 +13,12 @@ public class PageObject {
 	private String content;
 	private CtClass parsedClass;
 	
-	public PageObject() {
-		
-	}
 	
-	public PageObject(String className, String path) {
+	
+	public PageObject(String className, CtClass parsedClass) {
 		this.className = className;
-		this.path = path;
-		this.content = this.getContentByPath(path);
+		this.parsedClass = parsedClass;
+		//this.content = this.getContentByPath(path);
 	}
 	
 	public String getClassName(){
@@ -34,12 +33,12 @@ public class PageObject {
 		return this.content;
 	}
 	
-	public String getContentByPath(String path) {
+	/*public String getContentByPath(String path) {
 		String fileContent = FileUtil.readFile(new File(path));
 		this.parsedClass = Launcher.parseClass(fileContent);
 		
 		return fileContent;
-	}
+	}*/
 	
 	public void refreshContentByPath() {
 		String fileContent = FileUtil.readFile(new File(this.path));
