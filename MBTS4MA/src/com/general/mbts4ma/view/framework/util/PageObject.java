@@ -4,6 +4,7 @@ import java.io.File;
 
 import spoon.Launcher;
 import spoon.reflect.declaration.CtClass;
+import spoon.reflect.declaration.CtMethod;
 import spoon.reflect.declaration.CtType;
 
 public class PageObject {
@@ -52,6 +53,10 @@ public class PageObject {
 	
 	public CtClass getParsedClass() {
 		return this.parsedClass;
+	}
+	
+	public void createNewAbstractMethod(CtMethod method) {
+		this.getParsedClass().addMethod(method);
 	}
 	
 }

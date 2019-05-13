@@ -19,7 +19,7 @@ public class ASTSpoonScanner extends CtScanner {
 	
 	public ArrayList<CtElement> visitStatementAST(CtStatement statement) {
 		
-		ArrayList<CtElement> elementsList = new ArrayList<CtElement>();
+		final ArrayList<CtElement> elementsList = new ArrayList<CtElement>();
 		
 		CtScanner sc = new CtScanner() {
 
@@ -42,7 +42,7 @@ public class ASTSpoonScanner extends CtScanner {
     		@Override
     		public <T> void visitCtInvocation(CtInvocation<T> invocation) {
     			super.visitCtInvocation(invocation);    		
-    			invocation.getArguments().clear();
+    			//invocation.getArguments().clear();
     			add(invocation);
     		}
     		

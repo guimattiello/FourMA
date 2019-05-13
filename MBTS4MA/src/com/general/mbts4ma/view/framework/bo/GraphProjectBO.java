@@ -6,6 +6,7 @@ import java.io.File;
 import java.io.FileOutputStream;
 import java.io.IOException;
 import java.io.Serializable;
+import java.lang.reflect.Constructor;
 import java.net.URLEncoder;
 import java.util.ArrayList;
 import java.util.Iterator;
@@ -14,6 +15,8 @@ import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 
 import javax.swing.JOptionPane;
 
@@ -27,6 +30,8 @@ import com.general.mbts4ma.view.dialog.EventPropertiesDialog;
 import com.general.mbts4ma.view.framework.gson.GsonBuilderSingleton;
 import com.general.mbts4ma.view.framework.util.FileUtil;
 import com.general.mbts4ma.view.framework.util.MapUtil;
+import com.general.mbts4ma.view.framework.util.PageObject;
+import com.general.mbts4ma.view.framework.util.SpoonUtil;
 import com.general.mbts4ma.view.framework.util.StringUtil;
 import com.general.mbts4ma.view.framework.vo.GraphProjectVO;
 import com.github.eta.esg.Vertex;
@@ -39,6 +44,12 @@ import com.mxgraph.util.mxXmlUtils;
 import com.mxgraph.util.png.mxPngEncodeParam;
 import com.mxgraph.util.png.mxPngImageEncoder;
 import com.mxgraph.view.mxGraph;
+
+import spoon.reflect.code.CtBlock;
+import spoon.reflect.code.CtStatement;
+import spoon.reflect.declaration.CtConstructor;
+import spoon.reflect.declaration.CtMethod;
+import spoon.reflect.declaration.CtParameter;
 
 public class GraphProjectBO implements Serializable {
 
@@ -550,5 +561,494 @@ public class GraphProjectBO implements Serializable {
 
 		return edgeTemplates;
 	}
+	
+	/**
+	 * Check if all EventInstances of a Complete Event Sequence contains the same parameters quantity
+	 * @param GraphProjectVO graphProject
+	 * @param List<Vertex> ces
+	 * @return boolean
+	 * */
+	private static synchronized boolean checkWebParametersConsistency(GraphProjectVO graphProject, List<Vertex> ces) {
+		
+		int maximumParamQuantity = 0;
+		
+		for (Vertex vertex : ces) {
+		
+			ArrayList<EventInstance> eis = graphProject.getEventInstanceByVertice(vertex.getId());
+			
+			if (eis != null && eis.size() > 0) {
+				
+				if (maximumParamQuantity > 0) {
+					if (eis.size() != maximumParamQuantity) {
+						JOptionPane.showMessageDialog(null, "Check the parameters consistency!", "Attention", JOptionPane.INFORMATION_MESSAGE);
+						return false;
+					}
+				} else {
+					maximumParamQuantity = eis.size();
+				}
+				
+			}
+		
+		}
+		
+		return true;
+	}
 
+	private static synchronized boolean checkIfVertexWasCreatedByUser(GraphProjectVO graphProject, Vertex vertex) {
+		
+		if (graphProject.getVerticesCreatedByUser().contains(vertex.getId()))
+			return true;
+		
+		return false;
+	}
+	
+	private static synchronized boolean checkIfEventInstanceWasCreatedByUser(GraphProjectVO graphProject, EventInstance ei) {
+		
+		if (ei.getCreatedAutomatically())
+			return false;
+		
+		return true;
+	}
+	
+	private static synchronized List<CtMethod<?>> getMethodsToCreateFromCES(GraphProjectVO graphProject, List<Vertex> ces) {
+		
+		List<CtMethod<?>> methodsToCreate = new ArrayList<CtMethod<?>>();				
+		
+		boolean thereIsVerticesCreatedByUser = false;
+		boolean thereIsEventInstanceCreatedByUser = false;
+		
+		//Has the index of EventInstance that were created by the user
+		ArrayList<String> eventInstanceIndexCreatedByUser = new ArrayList<String>();
+		
+		for (Vertex vertex : ces) {
+			
+			if (checkIfVertexWasCreatedByUser(graphProject, vertex)) {
+				thereIsVerticesCreatedByUser = true;
+			}
+			
+			ArrayList<EventInstance> eis = graphProject.getEventInstanceByVertice(vertex.getId());
+			
+			if (eis != null) {
+			
+				if (eis.size() > 0 && eventInstanceIndexCreatedByUser == null)
+					eventInstanceIndexCreatedByUser = new ArrayList<String>();
+				
+				for (EventInstance ei : eis) {
+					if (checkIfEventInstanceWasCreatedByUser(graphProject, ei)) {
+						thereIsEventInstanceCreatedByUser = true;
+						eventInstanceIndexCreatedByUser.add(ei.getTestCaseMethodName());
+					}
+				}
+				
+			}
+			
+		}
+		
+		if (thereIsEventInstanceCreatedByUser || thereIsVerticesCreatedByUser) {
+			
+			if (thereIsEventInstanceCreatedByUser) {
+				
+				for (String testCaseMethodName: eventInstanceIndexCreatedByUser) {
+					
+					//Cria o método e inicia o bloco
+					CtMethod<?> newMethod = graphProject.getLauncher().getFactory().createMethod();
+					CtBlock<?> ctBlock = graphProject.getLauncher().getFactory().createBlock();				
+					newMethod.setBody(ctBlock);
+					
+					boolean existConsistentEventInstanceForThisCES = true;
+												
+					//graphProject.getLauncher().getFactory().createCodeSnippetStatement("");
+					
+					for (Vertex vertex : ces) {
+											
+						if (existConsistentEventInstanceForThisCES) {
+						
+							ArrayList<EventInstance> eis = graphProject.getEventInstanceByVertice(vertex.getId());
+							
+							EventInstance ei = null;
+							
+							if (eis != null && eis.size() > 0) {
+								
+								for (EventInstance e : eis) {
+									if (e.getTestCaseMethodName().equals(testCaseMethodName))
+										ei = e;
+								}
+							
+								if (ei == null) {
+									existConsistentEventInstanceForThisCES = false;
+									newMethod = null;
+								}
+								
+							}
+													
+							//Cria o statement para incluir no método
+							String statementStr = getStatementFromVertex(graphProject, vertex, ei);
+							if (statementStr != null) {
+								CtStatement statement = graphProject.getLauncher().getFactory().createCodeSnippetStatement(statementStr);
+								ctBlock.addStatement(statement);
+							}
+
+						}
+					}
+					
+					if (newMethod != null) {
+						methodsToCreate.add(newMethod);
+					}
+				}
+				
+			} else if (thereIsVerticesCreatedByUser) {
+				//Cria o método e inicia o bloco
+				CtMethod<?> newMethod = graphProject.getLauncher().getFactory().createMethod();
+				CtBlock<?> ctBlock = graphProject.getLauncher().getFactory().createBlock();				
+				newMethod.setBody(ctBlock);
+				
+				//Apenas transforma a CES em um método e adiciona ao MethodsToCreate
+				for (Vertex vertex : ces) {
+					String statementStr = getStatementFromVertex(graphProject, vertex, null);
+					CtStatement statement = graphProject.getLauncher().getFactory().createCodeSnippetStatement(statementStr);
+					ctBlock.addStatement(statement);
+				}
+				methodsToCreate.add(newMethod);
+			}
+			
+		}
+		
+		return methodsToCreate;
+	}
+	
+	private static synchronized String getStatementFromVertex(GraphProjectVO graphProject, Vertex vertex, EventInstance ei) {
+		
+		String vertexMethod = graphProject.getMethodTemplatesByVertices().get(vertex.getId());
+		
+		if (vertexMethod == null)
+			return null;
+		
+		vertexMethod = vertexMethod.replace("\n", "").replace(System.getProperty("line.separator"), "");
+		
+		String[] split = vertexMethod.split("::");
+		
+		String methodSignature = split[1];
+		String className = split[0];
+		
+		CtMethod<?> ctMethod = SpoonUtil.getCtMethodFromMethodSignatureAndClassName(methodSignature, className, graphProject.getLauncher());
+		
+		CtConstructor<?> constructor = null;
+		if (ctMethod == null)
+			constructor = SpoonUtil.getConstructorFromMethodSignatureAndClassName(methodSignature, className, graphProject.getLauncher());
+		
+		
+		if (ctMethod == null && constructor == null)
+			return  null;
+		
+		String statement = "";
+		List<CtParameter<?>> params = null;
+		
+		if (ctMethod != null) {
+			statement = ctMethod.getSimpleName() + "(";
+			params = ctMethod.getParameters();
+		} else if (constructor != null) {
+			String getParamsStr = null;	
+			Pattern pattern = Pattern.compile("\\((.*?)\\)");
+	        Matcher match = pattern.matcher(vertexMethod);
+	        while (match.find()) {        
+	        	String found = match.group().trim();
+	        	
+	        	if (!found.equals(""))
+	        		getParamsStr = found;
+	        }
+			statement = "new "+methodSignature.replace(getParamsStr, "")+"(";			
+			params = constructor.getParameters();
+		}
+		
+		String setParamsStr = "";
+		
+		if (ei != null) {				
+			
+			for (CtParameter<?> ctParameter : params) {
+				
+				for (Parameter p : ei.getParameters()) {
+				
+					if (ctParameter.getSimpleName().equals(p.getName()) || ctParameter.getSimpleName().contains(p.getName())) {
+						if (!setParamsStr.equals(""))
+							setParamsStr += ",";
+						statement += p.getValue();
+					}
+				
+				}
+				
+			}
+		}
+		
+		statement += setParamsStr + ")";
+		
+		/*String getParamsStr = null;	
+		Pattern pattern = Pattern.compile("\\((.*?)\\)");
+        Matcher match = pattern.matcher(vertexMethod);
+        while (match.find()) {        
+        	String found = match.group().trim();
+        	
+        	if (!found.equals(""))
+        		getParamsStr = found.replace("(", "").replace(")", "");
+        }
+		
+        String methodName = null;
+        
+        pattern = Pattern.compile("::(.*?)\\(");
+        match = pattern.matcher(vertexMethod);
+        while (match.find()) {        
+        	String found = match.group().trim();
+        	
+        	if (!found.equals(""))
+        		methodName = found.replaceAll(" ", "");
+        }
+        
+		
+		
+		String signatureMethod = (vertexMethod.split("::"))[1];
+		
+		String[] methodNameAux = ((signatureMethod.split("("))[0]).split(" ");
+		String methodName = methodNameAux[methodNameAux.length-1];
+				
+		String aux = (signatureMethod.split("("))[1];
+		String aux2 = (aux.split(")"))[0];
+		String[] params = aux2.split(",");
+		
+		String statement = methodName + "(";
+		
+		if (ei != null) {
+			for (int i = 0; i < params.length; i++) {
+				String paramName = params[i];
+				
+				ArrayList<Parameter> p = ei.getParameters();
+				
+				for (Parameter parameter : p) {
+					if (parameter.getName().equals(paramName.split(" ")[1])) {
+						statement += parameter.getValue();
+					}
+				}
+				
+				if (i < params.length-1)
+					statement += ", ";
+				
+			}
+		}
+		statement += ");";*/
+		
+		return statement;
+	}
+	
+	public static synchronized boolean generateTestingWebCodeSnippetsFiles(GraphProjectVO graphProject, List<List<Vertex>> cess) throws Exception {
+	
+		if (cess != null && !cess.isEmpty()) {
+			StringBuilder testingMethodBodies = new StringBuilder("");
+
+			int count = 1;
+
+			for (List<Vertex> ces : cess) {
+				
+				/*if (!checkWebParametersConsistency(graphProject, ces)) {
+					return false;
+				}*/
+				
+				List<CtMethod<?>> methods = getMethodsToCreateFromCES(graphProject, ces);
+				
+				System.out.println(methods);
+				
+			}
+
+		}
+		
+		//graphProject.getLauncher().prettyprint();
+		
+		return true;
+	}
+	
+	public static synchronized boolean generateTestingWebCodeSnippets(GraphProjectVO graphProject, Map<String, String> parameters, File testingCodeSnippetsDirectory, List<List<Vertex>> cess) throws Exception {
+		String testingClassTemplate = FileUtil.readFile(new File("templatesweb" + File.separator + "TestingClassTemplate.java"));
+		String testingMethodTemplate = FileUtil.readFile(new File("templatesweb" + File.separator + "TestingMethodTemplate.java"));
+		String databaseClassTemplate = FileUtil.readFile(new File("templatesweb" + File.separator + "DatabaseClassTemplate.java"));
+		
+		testingClassTemplate = StringUtil.replace(testingClassTemplate, parameters);
+		testingMethodTemplate = StringUtil.replace(testingMethodTemplate, parameters);
+		databaseClassTemplate = StringUtil.replace(databaseClassTemplate, parameters);
+
+		if (testingCodeSnippetsDirectory.exists()) {
+			//FileUtils.deleteDirectory(testingCodeSnippetsDirectory);
+		}
+
+		testingCodeSnippetsDirectory.mkdir();
+
+		if (cess != null && !cess.isEmpty()) {
+			StringBuilder testingMethodBodies = new StringBuilder("");
+
+			int count = 1;
+
+			for (List<Vertex> ces : cess) {
+				
+				List<String> cesList = generateMethodNamesListFromCES(ces);
+				
+				String testMethodsCall = "";
+				
+				for (Iterator iterator = cesList.iterator(); iterator.hasNext();) {
+					String methodName = (String) iterator.next();
+					
+					if (!methodName.equals("]") && !methodName.equals("["))
+						testMethodsCall += "assertTrue(adapter."+methodName+"());\n\t";
+					
+				}
+				
+				String testingMethodBody = testingMethodTemplate.replace("{{testingmethodname}}", "CES" + count++).replace("{{ces}}", StringUtil.convertListToString(generateMethodNamesListFromCES(ces), "[", "]")).replace("{{methodsinvocation}}", testMethodsCall);
+
+				if (testingMethodBodies.length() > 0) {
+					testingMethodBodies.append("\n\n");
+				}
+				
+				testingMethodBodies.append(testingMethodBody);
+			}
+
+			testingClassTemplate = testingClassTemplate.replace("{{testingmethodtemplate}}", testingMethodBodies.toString());
+
+
+			//Creating the Database file into the project directory if setup
+			if (graphProject.getDatabaseRegression().getRegressionScriptContent() != null && !graphProject.getDatabaseRegression().getRegressionScriptContent().equals("")) {				
+				File testingDatabaseRegressionScriptDirectory = new File(testingCodeSnippetsDirectory.getAbsolutePath() + File.separator + "database");
+				if (!testingDatabaseRegressionScriptDirectory.exists()) {
+					testingDatabaseRegressionScriptDirectory.mkdir();
+				}
+				FileUtil.writeFile(databaseClassTemplate, new File(testingDatabaseRegressionScriptDirectory.getAbsolutePath() + File.separator + "Database.java"));
+				FileUtil.writeFile(graphProject.getDatabaseRegression().getRegressionScriptContent(), new File(testingDatabaseRegressionScriptDirectory.getAbsolutePath() + File.separator + "script.sql"));
+			}
+			
+			//Creating the Test File into the project directory
+			FileUtil.writeFile(testingClassTemplate, new File(testingCodeSnippetsDirectory.getAbsolutePath() + File.separator + parameters.get("{{testingclassname}}") + "Test.java"));			
+			
+			//copyUtilityClasses(parameters, testingCodeSnippetsDirectory);
+
+			generateTestingWebAdapters(graphProject, generateMethodNamesMapFromCESs(cess, MainView.ID_START_VERTEX, MainView.ID_END_VERTEX), parameters, testingCodeSnippetsDirectory);
+		}
+
+		return true;
+	}
+	
+	private static synchronized void generateTestingWebAdapters(GraphProjectVO graphProject, Map<String, String> methodNames, Map<String, String> parameters, File testingCodeSnippetsDirectory) throws Exception {
+		String testingAdapterClassTemplate = FileUtil.readFile(new File("templatesweb" + File.separator + "adapter-templates" + File.separator + "TestingAdapterClassTemplate.java"));
+		String testingAdapterMethodTemplate = FileUtil.readFile(new File("templatesweb" + File.separator + "adapter-templates" + File.separator + "TestingAdapterMethodTemplate.java"));		
+		
+		testingAdapterClassTemplate = StringUtil.replace(testingAdapterClassTemplate, parameters);
+
+		File testingCodeSnippetsAdaptersDirectory = new File(testingCodeSnippetsDirectory.getAbsolutePath() + File.separator + "adapter");
+
+		File testingPageObjectsDirectory = new File(testingCodeSnippetsDirectory.getAbsolutePath() + File.separator + "pageobjects");
+		
+		if (testingCodeSnippetsAdaptersDirectory.exists()) {
+			FileUtils.deleteDirectory(testingCodeSnippetsAdaptersDirectory);
+		}
+
+		testingCodeSnippetsAdaptersDirectory.mkdir();
+		
+		if (!testingPageObjectsDirectory.exists()) {
+			testingPageObjectsDirectory.mkdir();
+		}		
+
+		StringBuilder testingMethodBodies = new StringBuilder("");
+
+		if (methodNames != null && !methodNames.isEmpty()) {
+			Iterator<String> iMethodNames = methodNames.keySet().iterator();
+
+			while (iMethodNames.hasNext()) {
+				String key = iMethodNames.next();
+				String value = methodNames.get(key);
+
+				String testingMethodBody = testingAdapterMethodTemplate.replace("{{testingmethodname}}", value);
+
+				if (graphProject.getMethodTemplatesByVertices().containsKey(key)) {
+					//String methodTemplateContent = FileUtil.readFile(new File("templatesweb" + File.separator + "robotium-methods" + File.separator + graphProject.getMethodTemplatesByVertices().get(key).replace(" ", "") + ".java"));
+					
+					//String methodTemplateContent = graphProject.getMethodTemplatesByVertices().get(key).replace(" ", ".");
+					String methodTemplateContent = graphProject.getMethodTemplatesByVertices().get(key);
+					
+					int indexFirstSpaceBar = methodTemplateContent.indexOf(' ');
+					
+					String pageObjectNameClass = methodTemplateContent.substring(0, indexFirstSpaceBar);
+					
+					//Reinstantiate the page object
+					String reinstantiatePageObject = StringUtil.toCamelCase(pageObjectNameClass, false) + " = PageFactory.initElements(driver, " + pageObjectNameClass + ".class);" ;
+					
+					String pageObjectNameClassCamelCase = StringUtil.toCamelCase(pageObjectNameClass, false);
+					
+					methodTemplateContent = methodTemplateContent.substring(indexFirstSpaceBar+1, methodTemplateContent.length());
+					
+					methodTemplateContent = methodTemplateContent.substring(0,1).toLowerCase().concat(methodTemplateContent.substring(1))+";";
+					
+					/*if (methodTemplateContent == null || "".equalsIgnoreCase(methodTemplateContent)) {
+						methodTemplateContent = FileUtil.readFile(new File("templatesweb" + File.separator + "utility-methods" + File.separator + graphProject.getMethodTemplatesByVertices().get(key).replace(" ", "") + ".java"));
+					}*/
+
+					methodTemplateContent = validateEventWebProperties(methodTemplateContent, graphProject.getMethodTemplatesPropertiesByVertices().get(key));
+					
+					methodTemplateContent = pageObjectNameClassCamelCase + "." + methodTemplateContent;
+					
+					testingMethodBody = testingMethodBody.replace("{{reinstantiatepageobject}}", reinstantiatePageObject);
+					testingMethodBody = testingMethodBody.replace("{{testingmethodtemplate}}", methodTemplateContent);
+				} else {
+					testingMethodBody = testingMethodBody.replace("{{testingmethodtemplate}}", "");
+				}
+
+				if (testingMethodBodies.length() > 0) {
+					testingMethodBodies.append("\n\n");
+				}
+				
+				if (testingMethodBodies.indexOf(testingMethodBody) == -1) {
+					testingMethodBodies.append(testingMethodBody);
+				}
+			}
+		}
+
+		testingAdapterClassTemplate = testingAdapterClassTemplate.replace("{{testingmethodtemplate}}", testingMethodBodies.toString());
+
+		FileUtil.writeFile(testingAdapterClassTemplate, new File(testingCodeSnippetsAdaptersDirectory.getAbsolutePath() + File.separator + parameters.get("{{testingclassname}}") + "Adapter.java"));
+		
+		//Creating the Page Objects file into the project directory		
+		ArrayList<PageObject> pobjects = (ArrayList<PageObject>) graphProject.getPageObjects();
+		
+		for (Iterator iterator = pobjects.iterator(); iterator.hasNext();) {
+			PageObject pageObject = (PageObject) iterator.next();
+			
+			FileUtil.writeFile(pageObject.getContent(), new File(testingPageObjectsDirectory.getAbsolutePath() + File.separator + pageObject.getClassName()));
+			
+		}
+
+	}
+	
+	private static synchronized String validateEventWebProperties(String methodTemplateContent, Map<String, String> properties) {
+		if (properties != null && !properties.isEmpty()) {
+			Iterator<String> iProperties = properties.keySet().iterator();
+
+			while (iProperties.hasNext()) {
+				String key = iProperties.next();
+				String value = properties.get(key);
+				while (key.charAt(0) == ' ') {
+					key = key.replaceFirst(" ", "");
+				}
+				
+				String[] tipoParametro = key.split(" ");
+				
+				if (tipoParametro[0].equals("String")) {
+					value = "\""+value+"\"";		
+				} else if (tipoParametro[0].equals("char")){
+					value = "\'"+value+"\'";
+				} else if (tipoParametro[0].equals("float")){
+					if (key.indexOf('f') != -1) {
+						value = value+"f";
+					}
+				}
+				
+				if (value != null && !"".equalsIgnoreCase(value)) {
+					methodTemplateContent = methodTemplateContent.replace(key, value);
+				}
+			}
+		}
+
+		return methodTemplateContent;
+	}
 }

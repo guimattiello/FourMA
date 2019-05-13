@@ -2,6 +2,7 @@ package com.general.mbts4ma.view;
 
 import java.awt.BorderLayout;
 import java.awt.Color;
+import java.awt.Event;
 import java.awt.Font;
 import java.awt.event.ActionEvent;
 import java.awt.event.ActionListener;
@@ -10,6 +11,9 @@ import java.awt.event.MouseAdapter;
 import java.awt.event.MouseEvent;
 import java.awt.event.MouseWheelEvent;
 import java.io.File;
+import java.io.FileOutputStream;
+import java.io.IOException;
+import java.io.InputStream;
 import java.lang.annotation.Annotation;
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -45,6 +49,12 @@ import javax.swing.SwingUtilities;
 import javax.swing.UIManager;
 import javax.swing.border.EmptyBorder;
 import javax.swing.filechooser.FileNameExtensionFilter;
+
+import org.apache.commons.compress.utils.IOUtils;
+import org.eclipse.jdt.internal.compiler.batch.CompilationUnit;
+
+import com.general.mbts4ma.EventInstance;
+import com.general.mbts4ma.Parameter;
 import com.general.mbts4ma.view.dialog.ExtractCESsDialog;
 import com.general.mbts4ma.view.dialog.ExtractEventFlowDialog;
 import com.general.mbts4ma.view.dialog.ProjectPropertiesDialog;
@@ -56,6 +66,7 @@ import com.general.mbts4ma.view.framework.graph.CustomGraphActions;
 import com.general.mbts4ma.view.framework.util.ASTSpoonScanner;
 import com.general.mbts4ma.view.framework.util.HardwareUtil;
 import com.general.mbts4ma.view.framework.util.PageObject;
+import com.general.mbts4ma.view.framework.util.SpoonModelCompiler;
 import com.general.mbts4ma.view.framework.vo.GraphProjectVO;
 import com.github.eta.esg.Vertex;
 import com.mxgraph.model.mxCell;
@@ -72,10 +83,13 @@ import com.mxgraph.view.mxGraph;
 import com.mxgraph.view.mxStylesheet;
 
 import spoon.Launcher;
+import spoon.SpoonModelBuilder;
 import spoon.reflect.CtModelImpl;
+import spoon.reflect.code.CtAbstractInvocation;
 import spoon.reflect.code.CtAssignment;
 import spoon.reflect.code.CtBlock;
 import spoon.reflect.code.CtConstructorCall;
+import spoon.reflect.code.CtExpression;
 import spoon.reflect.code.CtInvocation;
 import spoon.reflect.code.CtLocalVariable;
 import spoon.reflect.code.CtStatement;
@@ -83,11 +97,14 @@ import spoon.reflect.declaration.CtAnnotation;
 import spoon.reflect.declaration.CtClass;
 import spoon.reflect.declaration.CtElement;
 import spoon.reflect.declaration.CtMethod;
+import spoon.reflect.declaration.CtPackage;
 import spoon.reflect.declaration.CtType;
 import spoon.reflect.factory.Factory;
 import spoon.reflect.reference.CtTypeReference;
 import spoon.reflect.visitor.CtScanner;
+import spoon.reflect.visitor.DefaultJavaPrettyPrinter;
 import spoon.reflect.visitor.filter.TypeFilter;
+import spoon.support.sniper.SniperJavaPrettyPrinter;
 
 public class MainView extends JFrame {
 
@@ -433,8 +450,12 @@ public class MainView extends JFrame {
 					if (nodeValue != null && !"".equalsIgnoreCase(nodeValue)) {
 						MainView.this.graph.getModel().beginUpdate();
 
-						MainView.this.graph.insertVertex(MainView.this.graph.getDefaultParent(), UUID.randomUUID().toString(), nodeValue, e.getX() - 50, e.getY() - 25, 100, 50, NORMAL_VERTEX);
+						String uuid = UUID.randomUUID().toString();
+						
+						MainView.this.graph.insertVertex(MainView.this.graph.getDefaultParent(), uuid, nodeValue, e.getX() - 50, e.getY() - 25, 100, 50, NORMAL_VERTEX);
 
+						graphProject.getVerticesCreatedByUser().add(uuid);
+						
 						MainView.this.graph.getModel().endUpdate();
 					}
 										
@@ -519,10 +540,14 @@ public class MainView extends JFrame {
 			
 									String key = method.getSimpleName();
 									
-									pageObjectsTemplatesMenu.add(MainView.this.bind(key, CustomGraphActions.getDefineMethodTemplateAction(MainView.this.graphProject, key)));
+									String signature = pageObjectNext.getClassName() + "::\n" + method.getSignature();
+									
+									pageObjectsTemplatesMenu.add(MainView.this.bind(key, CustomGraphActions.getDefineMethodTemplateAction(MainView.this.graphProject, signature)));
 			
 								}
-								
+						        
+						        pageObjectsTemplatesMenu.add(MainView.this.bind("-- Create new abstract method --", CustomGraphActions.getCreateNewAbstractMethod(MainView.this.graphProject, pageObjectNext)));
+						        
 								popup.add(pageObjectsTemplatesMenu);
 								
 							}
@@ -594,71 +619,6 @@ public class MainView extends JFrame {
 		this.updateControllers();
 	}
 	
-	/*
-	 * NAO FUNCIONOU **/
-	private String getIdFromPreviousVertice(ArrayList<String> sequence, String last) {
-		
-		try {
-			GraphSolver.solve(this.graph);
-			
-			List<List<Vertex>> cess = GraphSolver.getCess();
-			
-			mxCell vertice = (mxCell) ((mxGraphModel)graph.getModel()).getCell(ID_START_VERTEX);
-			
-			for (List<Vertex> vertexList : cess) {
-							
-				if (vertexList.get(sequence.size()).getName() == sequence.get(sequence.size()-1)) {
-					
-					boolean control = true;
-					int count = sequence.size();
-					
-					while (control == true && count > 0) {
-						
-						if (sequence.get(count-1) != vertexList.get(count).getName()) {
-							control = false;
-						}
-						
-						count--;
-						
-					}
-					
-					//Nesse caso, nao precisa criar o vertice
-					if (control == true) 
-						return null;
-					
-				} else if (vertexList.get(sequence.size()-1).getName() == sequence.get(sequence.size()-2)) {
-					
-					boolean control = true;
-					int count = sequence.size()-1;
-					
-					while (control == true && count > 0) {
-						
-						if (sequence.get(count-1) != vertexList.get(count).getName()) {
-							control = false;
-						}
-						
-						count--;
-						
-					}
-					
-					//Nesse caso, retorna o ultimo vertice
-					if (control == true) 
-						return vertexList.get(sequence.size()-1).getId();
-					
-				}
-				
-			}
-				
-		} catch (Exception e) {
-			
-			e.printStackTrace();
-			
-		}
-		
-		return last;
-				
-	}
-
 	//Funcao retorna uma das listas, dentro do parametro searchingIntoSequences, que possui a lista enviada por parametro (searchingBySequence) como sublist.
 	private LinkedHashMap<String, String> getPreviousVerticesList(ArrayList<LinkedHashMap<String, String>> searchingIntoSequences, ArrayList<String> searchingBySequence) {
 		
@@ -746,6 +706,22 @@ public class MainView extends JFrame {
 		return false;
 	}
 	
+	private CtMethod getMethodBySignature(String signature, List<CtType<?>> classesList) {
+		
+		for (CtType<?> type : classesList) {
+			Set<CtMethod<?>> ctMethods = type.getMethods();
+			for (CtMethod<?> method : ctMethods) { 
+				if (method.getSignature().equals(signature)) {
+					return method;
+				}
+			}
+		}
+		
+		return null;
+		
+	}
+	
+	
 	private void newWebAppProject() {
 		this.graphProject = null;
 
@@ -764,16 +740,27 @@ public class MainView extends JFrame {
 		}
 		
 		/* PUXA TODOS OS ARQUIVOS DE UMA PASTA E CRIA UM MODELO SPOON (UTIL PARA OS PAGE OBJECTS)*/
-		Launcher launcher = new Launcher();
+		/*Launcher launcher = new Launcher();
 		launcher.getEnvironment().setNoClasspath(true);
-		//launcher.addInputResource("/Users/guimat/po/");
+		launcher.getEnvironment().setAutoImports(true);
 		launcher.addInputResource(graphProject.getWebProjectDirTestPath());
-		//launcher.getModelBuilder().setBinaryOutputDirectory(new File("./src/main/java/com/basic/dao/"));
-		launcher.buildModel();
+		launcher.getEnvironment().setSourceOutputDirectory(new File("/Users/guimat/projetos-teste/output/"));
 		
-		final CtModelImpl model = (CtModelImpl) launcher.getModel(); 
-		List<CtType<?>> classesList = launcher.getFactory().Class().getAll();
-			
+		launcher.buildModel();*/
+		
+		/*
+		//To print the files use
+		launcher.prettyprint();
+		//or
+		SpoonModelCompiler comp = new SpoonModelCompiler(launcher.getFactory());
+		comp.generateProcessedSourceFilesUsingCUs();
+		*/
+
+		//final CtModelImpl model = (CtModelImpl) launcher.getModel();
+		List<CtType<?>> classesList = this.graphProject.getLauncher().getFactory().Class().getAll();		
+		
+		//this.graphProject.setLauncher(launcher);
+		
 		double verticalDistance = 50;
 		
 		//Essa lista serve para identificar caminhos pré-existentes
@@ -785,12 +772,12 @@ public class MainView extends JFrame {
 			
 			Set<CtMethod<?>> ctMethods = type.getMethods();
 			
-			for (CtMethod<?> method : ctMethods) { 
+			for (CtMethod<?> method : ctMethods) {
 									        	
 	            //Get the annotations to look for test methods        	
 	        	for (CtAnnotation<? extends Annotation> ann : method.getAnnotations()) {
 	        		
-	                if (ann.toString().contains("org.junit.Test")) {
+	                if (ann.toString().contains("org.junit.Test") || ann.toString().equals("@Test")) {
 	                	CtBlock block = method.getBody();
 	                	
 	                	//Grava a sequência de statements desse método com o respectivo id do vértice
@@ -807,12 +794,12 @@ public class MainView extends JFrame {
 	                    for (CtStatement statement : statements) {
 	                    	
 	                    	//ASTSpoonScanner Class cleans invocations arguments list
-	                    	ArrayList<CtElement> elementsFromStatementWithArguments = (new ASTSpoonScanner()).visitStatementAST(statement);	     	                    	
+	                    	//ArrayList<CtElement> elementsFromStatementWithArguments = (new ASTSpoonScanner()).visitStatementAST(statement);	     	                    	
 	                    	
 	                    	//Statements without arguments
-	                    	ArrayList<CtElement> elementsFromStatement = (new ASTSpoonScanner()).visitStatementAST(statement);	                    	
+	                    	ArrayList<CtElement> elementsFromStatement = (new ASTSpoonScanner()).visitStatementAST(statement);		                    
 	                    	
-	                    	System.out.println(elementsFromStatement);
+	                    	//System.out.println(elementsFromStatement);
 	                    	
 	                    	//Check if the statement is an Assert
 	                    	if (elementsFromStatement.size() > 0 && elementsFromStatement.get(elementsFromStatement.size()-1) instanceof CtInvocation) {	                    		
@@ -827,7 +814,8 @@ public class MainView extends JFrame {
 	                    	
 	                    	for (CtElement ctElement : elementsFromStatement) {
 	                    		
-	                    		//if (ctElement instanceof CtInvocation && (isAssert((CtInvocation)ctElement) || returnAProjectClass((CtInvocation)ctElement, classesName))) {
+	                    		ArrayList<Parameter> parameters = new ArrayList<Parameter>();
+	                    		
 	                    		if ((ctElement instanceof CtInvocation || ctElement instanceof CtConstructorCall) && (isAssert(ctElement) || relatedToAProjectClass(ctElement))) {
 	                    			
 	                    			CtInvocation ctInvocation = null;	                    			
@@ -840,6 +828,20 @@ public class MainView extends JFrame {
 	                    			
 	                    			if (ctElement instanceof CtInvocation) {
 		                    			ctInvocation = (CtInvocation) ctElement;
+		                    			System.out.println(ctInvocation.getExecutable().getSignature().toString() + " - " + ctInvocation.getArguments());
+		                    			
+		                    			//Create the parameters
+		                    			List<CtExpression<?>> args = ctInvocation.getArguments();
+		                    			
+		                    			int countNameParam = 0;
+		                    			
+		                    			for (CtExpression<?> param : args) {
+		                    				countNameParam++;
+		                    				CtMethod methodParam = getMethodBySignature(ctInvocation.getExecutable().getSignature(), classesList);
+		                    				Parameter p = new Parameter(param.getType().getSimpleName(), param.toString(), (methodParam != null ? methodParam.getParameters().get(0).toString() : "nome do metodo"));
+											parameters.add(p);
+										}		                    			
+		                    			
 		                    			methodUniqueName = ctInvocation.getTarget().getType() + "::" + ctInvocation.getExecutable();
 		                    			vertexSize = ctInvocation.getExecutable().getSimpleName().toString().length() * 3 + 120;
 		                    			if (isAssert(ctInvocation)) {
@@ -855,6 +857,19 @@ public class MainView extends JFrame {
 		                    			
 	                    			} else {
 	                    				ctConstructorCall = (CtConstructorCall) ctElement;
+	                    				
+	                    				//Create the parameters
+		                    			List<CtExpression<?>> args = ctConstructorCall.getArguments();
+		                    			
+		                    			int countNameParam = 0;
+		                    			
+		                    			for (CtExpression<?> param : args) {
+		                    				countNameParam++;
+		                    				CtMethod methodParam = getMethodBySignature(ctConstructorCall.getExecutable().getSignature(), classesList);
+		                    				Parameter p = new Parameter(param.getType().getSimpleName(), param.toString(), (methodParam != null ? methodParam.getParameters().get(0).toString() : "nome do metodo"));
+											parameters.add(p);
+										}	
+	                    				
 	                    				methodUniqueName = ctConstructorCall.getExecutable().getType() + "::" + ctConstructorCall.getExecutable();
 	                    				vertexSize = ctConstructorCall.getExecutable().getSimpleName().toString().length() * 3 + 120;
 	                    				if (isAssert(ctConstructorCall)) {
@@ -916,6 +931,24 @@ public class MainView extends JFrame {
 		                    			newVertex = (mxCell) ((mxGraphModel)graph.getModel()).getCell(newVertexId);
 		                    		}
 		                    				                    		
+		                    		if (parameters.size() > 0) {
+			                    		//Pega um possível event instance já declarado
+			                    		ArrayList<EventInstance> arrEI = graphProject.getEventInstanceByVertice(newVertexId);
+			                    		
+			                    		if (arrEI == null) {
+			                    			arrEI = new ArrayList<EventInstance>();
+			                    		}
+			                    		
+			                    		EventInstance ei = new EventInstance();
+			                    		ei.setId(UUID.randomUUID().toString());
+		                    			ei.setParameters(parameters);
+		                    			ei.setTestCaseMethodName(method.getSignature());
+		                    			ei.setCreatedAutomatically(true);
+			                    	
+		                    			arrEI.add(ei);
+			                    		graphProject.updateEventInstanceByVertices(newVertexId, arrEI);
+		                    		}
+
 		                    		methodSequence.put(newVertexId, methodUniqueName);
 									
 									lastVertex = newVertex;
@@ -940,7 +973,7 @@ public class MainView extends JFrame {
 	                   
 	                    listaStatements.add(methodSequence);
 	                    
-	                    Double longerArrayStatement = countDistanceX.get(0);	                    
+	                    Double longerArrayStatement = countDistanceX.get(0);
 	                    
 	                    for (Double distanceX : countDistanceX) {
 							if (distanceX > longerArrayStatement)

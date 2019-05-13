@@ -5,6 +5,10 @@ import java.util.ArrayList;
 public class EventInstance {
 	private String id;
 	private ArrayList<Parameter> parameters = new ArrayList<Parameter>();
+
+	//For web applications
+	private String testCaseMethodName;
+	private boolean createdAutomatically;
 	
 	public EventInstance() {}
 	
@@ -30,6 +34,22 @@ public class EventInstance {
 	
 	public void setParameters(ArrayList<Parameter> parameters) {
 		this.parameters = parameters;
+	}
+	
+	public String getTestCaseMethodName() {
+		return testCaseMethodName;
+	}
+	
+	public void setTestCaseMethodName(String testCaseMethodName) {
+		this.testCaseMethodName = testCaseMethodName;
+	}
+	
+	public boolean getCreatedAutomatically() {
+		return createdAutomatically;
+	}
+	
+	public void setCreatedAutomatically(boolean createdAutomatically) {
+		this.createdAutomatically = createdAutomatically;
 	}
 	
 	public String toString() {

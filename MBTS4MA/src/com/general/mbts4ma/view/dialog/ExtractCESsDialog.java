@@ -7,6 +7,9 @@ import java.awt.event.ActionEvent;
 import java.awt.event.ActionListener;
 import java.io.File;
 import java.io.IOException;
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.Iterator;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
@@ -84,16 +87,30 @@ public class ExtractCESsDialog extends JDialog {
 		this.getContentPane().add(this.buttonPane, BorderLayout.SOUTH);
 
 		this.btnGenerateTestingCodeSnippets = new JButton("");
-		this.btnGenerateTestingCodeSnippets.addActionListener(new ActionListener() {
-			@Override
-			public void actionPerformed(ActionEvent e) {
-				try {
-					ExtractCESsDialog.this.generateTestingCodeSnippets();
-				} catch (Exception e2) {
-					e2.printStackTrace();
+		if (this.graphProject.getIsWebProject()){
+			this.btnGenerateTestingCodeSnippets.addActionListener(new ActionListener() {
+				@Override
+				public void actionPerformed(ActionEvent e) {
+					try {
+						ExtractCESsDialog.this.generateTestingCodeSnippetsForWebFiles();												
+					} catch (Exception e2) {
+						e2.printStackTrace();
+					}
 				}
-			}
-		});
+			});
+		} else {
+			this.btnGenerateTestingCodeSnippets.addActionListener(new ActionListener() {
+				@Override
+				public void actionPerformed(ActionEvent e) {
+					try {				
+						ExtractCESsDialog.this.generateTestingCodeSnippets();																		
+					} catch (Exception e2) {
+						e2.printStackTrace();
+					}
+				}
+			});
+		}
+		
 		this.btnGenerateTestingCodeSnippets.setToolTipText("Generate testing code snippets");
 		this.btnGenerateTestingCodeSnippets.setIcon(new ImageIcon(ExtractCESsDialog.class.getResource("/com/general/mbts4ma/view/framework/images/testingcodesnippets.png")));
 
@@ -175,6 +192,92 @@ public class ExtractCESsDialog extends JDialog {
 		}
 	}
 
+	public void generateTestingCodeSnippetsForWebFiles() throws Exception {
+		if (this.graphProject.getLauncher().getEnvironment().getSourceOutputDirectory() == null){
+			JOptionPane.showMessageDialog(null, "There is no output webproject test directory set up.", "Error", JOptionPane.INFORMATION_MESSAGE);
+		} else {
+				
+			if (GraphProjectBO.generateTestingWebCodeSnippetsFiles(this.graphProject, this.cess)) {	
+				JOptionPane.showMessageDialog(null, "Testing code snippet successfully generated.", "Attention", JOptionPane.INFORMATION_MESSAGE);	
+				try {
+					Desktop.getDesktop().open(this.graphProject.getLauncher().getEnvironment().getSourceOutputDirectory());
+				} catch (IOException e) {
+					e.printStackTrace();
+				}
+			} else {
+				JOptionPane.showMessageDialog(null, "Check the parameters consistency!", "Attention", JOptionPane.INFORMATION_MESSAGE);
+			}
+		}
+	}
+	
+	public void generateTestingCodeSnippetsForWeb() throws Exception {
+		
+		Map<String, String> parameters = new LinkedHashMap<String, String>();		
+		
+		//Declara os Page Objects
+		ArrayList<String> arrPageObjectsName = new ArrayList(Arrays.asList(this.graphProject.getWebProjectPageObject().replace(".java","").split(",")));
+		
+		String pageObjectsDeclaracao = "";
+		String pageObjectsInit = "";
+		String pageObjectsInitAdapter = "";
+		String parameterPageObject = "";
+		String importPageObjects = "";
+		String instatiateAdapter = "";
+		
+		for (Iterator iterator = arrPageObjectsName.iterator(); iterator.hasNext();) {
+			String pageObjectName = (String) iterator.next();
+			pageObjectsDeclaracao += pageObjectName + " " + StringUtil.toCamelCase(pageObjectName, false, null) + ";\n";
+			pageObjectsInit += StringUtil.toCamelCase(pageObjectName, false, null) + " = PageFactory.initElements(driver, " + pageObjectName + ".class);\n\t";
+			pageObjectsInitAdapter += "this." + StringUtil.toCamelCase(pageObjectName, false, null) + " = " + StringUtil.toCamelCase(pageObjectName, false, null)  + ";\n\t";
+			parameterPageObject += pageObjectName + " " + StringUtil.toCamelCase(pageObjectName, false, null);
+			instatiateAdapter += StringUtil.toCamelCase(pageObjectName, false, null);
+			if (iterator.hasNext()){
+				parameterPageObject += ", ";
+				instatiateAdapter += ", ";
+			}
+			importPageObjects += "import pageobjects." + pageObjectName + ";\n";			
+		}
+		
+		parameters.put("{{otherimports}}", "");
+		parameters.put("{{testingclassname}}", StringUtil.toCamelCase(StringUtil.unaccent(this.graphProject.getName()), true));
+		parameters.put("{{testingpageobjects}}", pageObjectsDeclaracao);
+		parameters.put("{{testingurlinicio}}", this.graphProject.getWebProjectURL());
+		parameters.put("{{testingsetup}}", pageObjectsInit);
+		//parameters.put("{{projectpackage}}", this.graphProject.getName());
+		parameters.put("{{testingparameterpageobject}}", parameterPageObject);
+		parameters.put("{{testingpageobjectinit}}", pageObjectsInitAdapter);
+		parameters.put("{{testingimportpageobjects}}", importPageObjects);
+		parameters.put("{{testinginstatiateadapter}}", instatiateAdapter);
+		parameters.put("{{dbhost}}", (this.graphProject.getDatabaseRegression().getDbHost() != null ? this.graphProject.getDatabaseRegression().getDbHost() : ""));
+		parameters.put("{{dbname}}", (this.graphProject.getDatabaseRegression().getDbName() != null ? this.graphProject.getDatabaseRegression().getDbName() : ""));
+		parameters.put("{{dbuser}}", (this.graphProject.getDatabaseRegression().getDbUser() != null ? this.graphProject.getDatabaseRegression().getDbUser() : ""));
+		parameters.put("{{dbpassword}}", (this.graphProject.getDatabaseRegression().getDbPassword() != null ? this.graphProject.getDatabaseRegression().getDbPassword() : ""));
+		if (this.graphProject.getDatabaseRegression().getDbPassword() != null &&
+				this.graphProject.getDatabaseRegression().getDbUser() != null &&
+				this.graphProject.getDatabaseRegression().getDbName() != null &&
+				this.graphProject.getDatabaseRegression().getDbHost() != null) {
+			parameters.put("{{calldbclass}}", "Database.resetDatabase();");
+		} else {
+			parameters.put("{{calldbclass}}", "");
+		}
+		
+		if (this.graphProject.getWebProjectDirTestPath() == null){
+			JOptionPane.showMessageDialog(null, "There is no webproject test directory set up.", "Error", JOptionPane.INFORMATION_MESSAGE);
+		} else {
+			File testingWebCodeSnippetsDirectory = new File(this.graphProject.getWebProjectDirTestPath());		
+			if (GraphProjectBO.generateTestingWebCodeSnippets(this.graphProject, parameters, testingWebCodeSnippetsDirectory, this.cess)) {	
+				JOptionPane.showMessageDialog(null, "Testing code snippet successfully generated.", "Attention", JOptionPane.INFORMATION_MESSAGE);
+	
+				try {
+					Desktop.getDesktop().open(testingWebCodeSnippetsDirectory);
+				} catch (IOException e) {
+					e.printStackTrace();
+				}
+			}
+		}
+		
+	}
+	
 	private void exportToTxt() {
 		JFileChooser fileChooser = new JFileChooser(this.graphProject.getFileSavingDirectory());
 

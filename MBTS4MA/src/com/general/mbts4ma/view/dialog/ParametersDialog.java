@@ -55,6 +55,7 @@ public class ParametersDialog extends JDialog {
 		for (Parameter p : this.values.get(0).getParameters()) {
 			header.add(p.getName() + " : " + p.getType());
 		}
+		header.add("testCaseName");
 	}
 
 	private void printTableModelInfo() {
@@ -83,10 +84,10 @@ public class ParametersDialog extends JDialog {
 		this.eventInstanceName = sb.toString();
 	}
 
-	private void buildHeader() {
+	private void buildHeader() {				
 		if (this.values != null && !this.values.isEmpty()) {
 			this.tblEventProperties.setAutoCreateColumnsFromModel(true);
-			DefaultTableModel model = (DefaultTableModel) this.tblEventProperties.getModel();
+			DefaultTableModel model = (DefaultTableModel) this.tblEventProperties.getModel();			
 			loadHead();
 			for (String s : header)
 				model.addColumn(s);
@@ -95,8 +96,9 @@ public class ParametersDialog extends JDialog {
 		} else {
 			header.add("id");
 			header.add("P1 : String");
+			header.add("testCaseName");
 			this.tblEventProperties.setModel(new javax.swing.table.DefaultTableModel(new Object[][] { { "-", null } },
-					new String[] { "id", "P1 : String" }));
+					new String[] { "id", "P1 : String", "testCaseName" }));
 			this.tblEventProperties.setAutoCreateColumnsFromModel(false);
 		}
 	}
@@ -120,6 +122,7 @@ public class ParametersDialog extends JDialog {
 				for (Parameter p : plist) {
 					addRow[pos++] = p.getValue();
 				}
+				addRow[pos++] = this.values.get(i).getTestCaseMethodName();
 				((DefaultTableModel) this.tblEventProperties.getModel()).addRow(addRow);
 				addRow = new String[header.size() + 1];
 				pos = 0;
@@ -286,7 +289,7 @@ public class ParametersDialog extends JDialog {
 
 	private boolean validateTable() {
 		for (int i = 0; i < this.tblEventProperties.getRowCount(); i++) {
-			for (int j = 1; j < this.tblEventProperties.getColumnCount(); j++) {
+			for (int j = 1; j < this.tblEventProperties.getColumnCount()-1; j++) {
 				if (!this.validType((String) this.tblEventProperties.getValueAt(i, j), j))
 					return false;
 			}
@@ -310,11 +313,12 @@ public class ParametersDialog extends JDialog {
 		EventInstance ei = new EventInstance();
 		for (int i = 0; i < this.tblEventProperties.getRowCount(); i++) {
 			eventId = this.eventInstanceName + i;
-			for (int j = 1; j < header.size(); j++) {
+			for (int j = 1; j < header.size()-1; j++) {
 				p = new Parameter(header.get(j).split(" : ")[1], (String) this.tblEventProperties.getValueAt(i, j),
 						header.get(j).split(" : ")[0]);
 				parameters.add(p);
 			}
+			ei.setTestCaseMethodName((String)this.tblEventProperties.getValueAt(i, header.size()-1));
 			ei.setId(eventId);
 			ei.setParameters(parameters);
 			this.values.add(ei);
@@ -381,7 +385,7 @@ public class ParametersDialog extends JDialog {
 		// if (!header.contains(column.getHeaderValue().toString())) {
 		// printTableModelInfo();
 		// printHeader();
-		// System.out.println("\nIF QUE NÃO REMOVE DO HEADER");
+		// System.out.println("\nIF QUE Nï¿½O REMOVE DO HEADER");
 		// System.out.println(
 		// "\nVALOR DO COLUMN QUE VEM DO HEADER = " +
 		// column.getHeaderValue().toString().split(" : ")[0]);
@@ -390,7 +394,7 @@ public class ParametersDialog extends JDialog {
 		// }
 		if (column != null) {
 			this.tblEventProperties.removeColumn(column);
-			// COLUNA PRESENTE NO HEADER, MAS NÃO NO ARRAY DE EVENTINSTANCE
+			// COLUNA PRESENTE NO HEADER, MAS Nï¿½O NO ARRAY DE EVENTINSTANCE
 			if (header.get(col).equals(column.getHeaderValue().toString())) {
 				header.remove(col);
 				// COLUNA PRESENTE NO HEADER E NO ARRAY DE EVENTINSTANCE

@@ -18,11 +18,16 @@ import com.general.mbts4ma.view.dialog.EventPropertiesDialog;
 import com.general.mbts4ma.view.dialog.ParametersDialog;
 import com.general.mbts4ma.view.framework.util.FileUtil;
 import com.general.mbts4ma.view.framework.util.MapUtil;
+import com.general.mbts4ma.view.framework.util.PageObject;
 import com.general.mbts4ma.view.framework.util.StringUtil;
 import com.general.mbts4ma.view.framework.vo.GraphProjectVO;
 import com.mxgraph.model.mxCell;
 import com.mxgraph.swing.mxGraphComponent;
 import com.mxgraph.view.mxGraph;
+
+import spoon.Launcher;
+import spoon.reflect.declaration.CtClass;
+import spoon.reflect.declaration.CtMethod;
 
 public class CustomGraphActions {
 
@@ -75,11 +80,49 @@ public class CustomGraphActions {
 	public static Action getClearEdgeTemplateAction(GraphProjectVO graphProject) {
 		return new ClearEdgeTemplateAction("clearedgetemplate", graphProject);
 	}
+	
+	public static Action getCreateNewAbstractMethod(GraphProjectVO graphProject, PageObject pageObject) {
+		return new CreateNewAbstractMethod("createnewabstractmethod", graphProject, pageObject);
+	}
 
 	static final Action selectAllAction = new SelectAllAction("selectall");
 
 	public static Action getSelectAllAction() {
 		return selectAllAction;
+	}
+	
+	public static class CreateNewAbstractMethod extends AbstractAction {
+
+		private GraphProjectVO graphProject = null;
+		private PageObject pageObject = null;
+		
+		public CreateNewAbstractMethod(String name, GraphProjectVO graphProject, PageObject pageObject) {
+			super(name);
+			this.graphProject = graphProject;
+			this.pageObject = pageObject;
+		}
+
+		@Override
+		public void actionPerformed(ActionEvent e) {
+			mxGraph graph = getGraph(e);
+
+			if (graph != null) {
+				Object[] selectedCells = graph.getSelectionCells();
+
+				if (selectedCells != null && selectedCells.length > 0) {
+					if (!hasStartOrEndEdges(selectedCells)) {
+						String methodName = JOptionPane.showInputDialog("Enter the SIGNATURE of the new abstract method", "public LoginPage setPassword (String password)");//og(null, "Enter the SIGNATURE of the new abstract method", "Attention", JOptionPane.INFORMATION_MESSAGE);						
+						
+						if (!methodName.equals("")) {
+							CtClass<?> l = Launcher.parseClass("class A { @TODO\n" + methodName + "{throw new RuntimeException(\"This method need to be implemented!\");}}");
+							CtMethod<?> newMethod = (CtMethod<?>)l.getMethods().iterator().next();
+							this.graphProject.getLauncher().getFactory().Class().get(this.pageObject.getParsedClass().getQualifiedName()).addMethod(newMethod);
+							this.graphProject.pageObjectsRefresh();
+						}
+					}
+				}
+			}
+		}
 	}
 
 	public static class DeleteAction extends AbstractAction {

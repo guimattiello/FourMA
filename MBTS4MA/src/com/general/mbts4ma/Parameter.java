@@ -7,7 +7,7 @@ public class Parameter {
 	private String type;
 	private String value;
 	private String name;
-	
+		
 	public Parameter() {}
 	
 	public Parameter(String type, String value, String name) {

@@ -57,8 +57,6 @@ public class WebProjectPropertiesDialog extends JDialog {
 	private JButton btnUpdatePageObject;
 	private JButton btnDatabaseProperties;
 	
-	private List<CtType<?>> classesList;
-
 	private JTextField txtDBHost;
 	private JTextField txtDBName;
 	private JTextField txtDBUser;
@@ -66,6 +64,8 @@ public class WebProjectPropertiesDialog extends JDialog {
 	
 	private boolean isUpdate = false;
 
+	private Launcher spoonLauncher;
+	
 	private List<PageObject> pageObjects;
 	private DatabaseRegression databaseRegression;
 	
@@ -409,11 +409,13 @@ public class WebProjectPropertiesDialog extends JDialog {
 			
 			Launcher launcher = new Launcher();
 			launcher.getEnvironment().setNoClasspath(true);
-			launcher.addInputResource(path);
+			launcher.getEnvironment().setAutoImports(true);
+			launcher.addInputResource(path);			
 			launcher.buildModel();
 			
-			final CtModelImpl model = (CtModelImpl) launcher.getModel(); 
-			classesList = launcher.getFactory().Class().getAll();
+			this.spoonLauncher = launcher;
+						
+			List<CtType<?>> classesList = launcher.getFactory().Class().getAll();
 			
 			for (CtType<?> clazz : classesList) {
 				
@@ -516,6 +518,11 @@ public class WebProjectPropertiesDialog extends JDialog {
 	}
 
 	private void confirm() {
+		if (this.spoonLauncher == null) {
+			JOptionPane.showMessageDialog(null, "Select the project path and configure the project!", "Attention", JOptionPane.WARNING_MESSAGE);
+			return;
+		}
+		
 		if (!this.isUpdate) {
 			this.graphProject = new GraphProjectVO();
 		}
@@ -533,6 +540,10 @@ public class WebProjectPropertiesDialog extends JDialog {
 			if (this.tablePageObjects.getValueAt(i, 1) == Boolean.TRUE)
 				pageObjectsName.add(this.tablePageObjects.getValueAt(i, 0).toString());
 		}
+		
+		this.graphProject.setLauncher(this.spoonLauncher);
+		
+		List<CtType<?>> classesList = this.graphProject.getLauncher().getFactory().Class().getAll();
 		
 		for (CtType<?> clazz : classesList) {
 			if (pageObjectsName.contains(clazz.getSimpleName())) {

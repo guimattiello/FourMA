@@ -14,6 +14,10 @@ import com.general.mbts4ma.view.framework.util.DatabaseRegression;
 import com.general.mbts4ma.view.framework.util.PageObject;
 import com.general.mbts4ma.view.framework.util.TestClass;
 
+import spoon.Launcher;
+import spoon.reflect.declaration.CtClass;
+import spoon.reflect.declaration.CtType;
+
 public class GraphProjectVO extends AbstractVO implements Serializable {
 
 	private transient String fileSavingPath;
@@ -31,10 +35,14 @@ public class GraphProjectVO extends AbstractVO implements Serializable {
 	private String webProjectDirTestPath;
 	private DatabaseRegression databaseRegression;
 	
+	private Launcher launcher;
+	
 	private String dbhost;
 	private String dbname;
 	private String dbuser;
 	private String dbpassword;
+	
+	private ArrayList<String> verticesCreatedByUser;
 	
 	/** END WEB PROJECT VARIABLES **/
 	
@@ -132,6 +140,26 @@ public class GraphProjectVO extends AbstractVO implements Serializable {
 
 	public List<PageObject> getPageObjects(){
 		return this.pageObjects;
+	}
+	
+	public void setLauncher(Launcher launcher){
+		this.launcher = launcher;
+	}
+
+	public Launcher getLauncher(){
+		return this.launcher;
+	}
+	
+	public void setVerticesCreatedByUser(ArrayList<String> verticesCreatedByUser){
+		this.verticesCreatedByUser = verticesCreatedByUser;
+	}
+
+	public ArrayList<String> getVerticesCreatedByUser(){
+		if (this.verticesCreatedByUser == null) {
+			this.verticesCreatedByUser = new ArrayList<String>();
+		}
+		
+		return this.verticesCreatedByUser;
 	}
 	
 	public void setTestClasses(List<TestClass> testClasses){
@@ -315,6 +343,23 @@ public class GraphProjectVO extends AbstractVO implements Serializable {
 
 	public void setFileSavingPath(String fileSavingPath) {
 		this.fileSavingPath = fileSavingPath;
+	}
+	
+	public void pageObjectsRefresh () {
+		
+		List<CtType<?>> classesList = this.getLauncher().getFactory().Class().getAll();
+		for (PageObject po : this.pageObjects) {
+			
+			for (CtType<?> clazz : classesList) {
+				
+				if (po.getParsedClass().getQualifiedName().equals(clazz.getQualifiedName())) {
+					
+					this.pageObjects.get(this.pageObjects.indexOf(po)).setParsedClass((CtClass<?>)clazz);
+					
+				}
+			}
+			
+		}
 	}
 
 }
