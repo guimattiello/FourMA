@@ -55,7 +55,10 @@ public class ParametersDialog extends JDialog {
 		for (Parameter p : this.values.get(0).getParameters()) {
 			header.add(p.getName() + " : " + p.getType());
 		}
-		header.add("testCaseName");
+		if (graphProject.getIsWebProject()) {
+			header.add("testCaseName");
+			header.add("createdAutomatically");
+		}
 	}
 
 	private void printTableModelInfo() {
@@ -95,10 +98,17 @@ public class ParametersDialog extends JDialog {
 			this.tblEventProperties.setAutoCreateColumnsFromModel(false);
 		} else {
 			header.add("id");
-			header.add("P1 : String");
-			header.add("testCaseName");
-			this.tblEventProperties.setModel(new javax.swing.table.DefaultTableModel(new Object[][] { { "-", null } },
-					new String[] { "id", "P1 : String", "testCaseName" }));
+			header.add("P1 : String");			
+			if (graphProject.getIsWebProject()) {
+				header.add("testCaseName");
+				header.add("createdAutomatically");
+				
+				this.tblEventProperties.setModel(new javax.swing.table.DefaultTableModel(new Object[][] { { "-", null } },
+						new String[] { "id", "P1 : String", "testCaseName", "createdAutomatically" }));
+			} else {
+				this.tblEventProperties.setModel(new javax.swing.table.DefaultTableModel(new Object[][] { { "-", null } },
+					new String[] { "id", "P1 : String" }));
+			}
 			this.tblEventProperties.setAutoCreateColumnsFromModel(false);
 		}
 	}
@@ -113,7 +123,11 @@ public class ParametersDialog extends JDialog {
 		}
 
 		if (this.getValues() != null && !this.getValues().isEmpty()) {
-			String[] addRow = new String[header.size() + 1];
+			String[] addRow = null;
+			if (graphProject.getIsWebProject())
+				addRow = new String[header.size() + 2];
+			else
+				addRow = new String[header.size()];
 			int pos = 0;
 			ArrayList<Parameter> plist = null;
 			for (int i = 0; i < this.values.size(); i++) {
@@ -122,7 +136,10 @@ public class ParametersDialog extends JDialog {
 				for (Parameter p : plist) {
 					addRow[pos++] = p.getValue();
 				}
-				addRow[pos++] = this.values.get(i).getTestCaseMethodName();
+				if (graphProject.getIsWebProject()) {
+					addRow[pos++] = this.values.get(i).getTestCaseMethodName();
+					addRow[pos++] = this.values.get(i).getCreatedAutomatically()+"";
+				}
 				((DefaultTableModel) this.tblEventProperties.getModel()).addRow(addRow);
 				addRow = new String[header.size() + 1];
 				pos = 0;
@@ -288,8 +305,14 @@ public class ParametersDialog extends JDialog {
 	}
 
 	private boolean validateTable() {
+		int columnCount = 0;
+		if (graphProject.getIsWebProject())
+			columnCount = this.tblEventProperties.getColumnCount()-2;
+		else
+			columnCount = this.tblEventProperties.getColumnCount();
+		
 		for (int i = 0; i < this.tblEventProperties.getRowCount(); i++) {
-			for (int j = 1; j < this.tblEventProperties.getColumnCount()-1; j++) {
+			for (int j = 1; j < columnCount; j++) {
 				if (!this.validType((String) this.tblEventProperties.getValueAt(i, j), j))
 					return false;
 			}
@@ -313,12 +336,15 @@ public class ParametersDialog extends JDialog {
 		EventInstance ei = new EventInstance();
 		for (int i = 0; i < this.tblEventProperties.getRowCount(); i++) {
 			eventId = this.eventInstanceName + i;
-			for (int j = 1; j < header.size()-1; j++) {
+			for (int j = 1; j < (graphProject.getIsWebProject() ? header.size()-2 : header.size()); j++) {
 				p = new Parameter(header.get(j).split(" : ")[1], (String) this.tblEventProperties.getValueAt(i, j),
 						header.get(j).split(" : ")[0]);
 				parameters.add(p);
 			}
-			ei.setTestCaseMethodName((String)this.tblEventProperties.getValueAt(i, header.size()-1));
+			if (graphProject.getIsWebProject()) {
+				ei.setTestCaseMethodName((String)this.tblEventProperties.getValueAt(i, header.size()-2));
+				ei.setCreatedAutomatically(this.tblEventProperties.getValueAt(i, header.size()-1).equals("true") ? Boolean.TRUE : Boolean.FALSE);
+			}
 			ei.setId(eventId);
 			ei.setParameters(parameters);
 			this.values.add(ei);
@@ -335,7 +361,11 @@ public class ParametersDialog extends JDialog {
 	}
 
 	private void addRowTable() {
-		((DefaultTableModel) this.tblEventProperties.getModel()).addRow(new Object[] { "-" });
+		if (graphProject.getIsWebProject()) {
+			((DefaultTableModel) this.tblEventProperties.getModel()).addRow(new Object[] { "-" });
+			this.tblEventProperties.getModel().setValueAt("false", this.tblEventProperties.getModel().getRowCount()-1, this.tblEventProperties.getModel().getColumnCount()-1);
+		} else 
+			((DefaultTableModel) this.tblEventProperties.getModel()).addRow(new Object[] { "-" });
 	}
 
 	private void deleteRowTable() {

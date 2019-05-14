@@ -26,6 +26,13 @@ public class SpoonUtil {
 						return ctMethod;
 				}
 				
+				methods = clazz.getAllMethods();
+				
+				for (CtMethod<?> ctMethod : methods) {
+					if (ctMethod.getSignature().equals(methodSignature))
+						return ctMethod;
+				}
+				
 			}		
 			
 		}
@@ -37,7 +44,7 @@ public class SpoonUtil {
 		
 	}
 	
-	public static CtConstructor<?> getConstructorFromMethodSignatureAndClassName(String methodSignature, String className, Launcher launcher) {
+	public static CtConstructor<?> getCtConstructorFromMethodSignatureAndClassName(String methodSignature, String className, Launcher launcher) {
 		
 		List<CtType<?>> classesList = launcher.getFactory().Class().getAll();
 		
@@ -55,10 +62,16 @@ public class SpoonUtil {
 					if (constructor.getSignature().equals(methodSignature) || constructor.getSimpleName().equals(methodSignature))
 						return constructor;
 				}
+				
+				for (Object ctType : constructors) {
+					CtConstructor<?> constructor = (CtConstructor<?>)ctType;
+					
+					return constructor;
+				}
 			}
 		}
 		
 		return null;
-	}
+	}	
 	
 }

@@ -321,6 +321,9 @@ public class CustomGraphActions {
 
 						if (isVertex(vertice) && !isStartVertex(vertice) && !isEndVertex(vertice) && !isGeneratedEventVertex(vertice)) {
 							vertice.setStyle(MainView.EVENT_VERTEX);
+							
+							if (this.graphProject.getIsWebProject())
+								vertice.setValue(this.label);
 
 							this.graphProject.updateMethodTemplateByVertice(vertice.getId(), this.label);
 

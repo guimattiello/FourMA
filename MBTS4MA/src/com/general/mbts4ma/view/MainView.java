@@ -67,6 +67,7 @@ import com.general.mbts4ma.view.framework.util.ASTSpoonScanner;
 import com.general.mbts4ma.view.framework.util.HardwareUtil;
 import com.general.mbts4ma.view.framework.util.PageObject;
 import com.general.mbts4ma.view.framework.util.SpoonModelCompiler;
+import com.general.mbts4ma.view.framework.util.SpoonUtil;
 import com.general.mbts4ma.view.framework.vo.GraphProjectVO;
 import com.github.eta.esg.Vertex;
 import com.mxgraph.model.mxCell;
@@ -95,6 +96,7 @@ import spoon.reflect.code.CtLocalVariable;
 import spoon.reflect.code.CtStatement;
 import spoon.reflect.declaration.CtAnnotation;
 import spoon.reflect.declaration.CtClass;
+import spoon.reflect.declaration.CtConstructor;
 import spoon.reflect.declaration.CtElement;
 import spoon.reflect.declaration.CtMethod;
 import spoon.reflect.declaration.CtPackage;
@@ -865,8 +867,9 @@ public class MainView extends JFrame {
 		                    			
 		                    			for (CtExpression<?> param : args) {
 		                    				countNameParam++;
-		                    				CtMethod methodParam = getMethodBySignature(ctConstructorCall.getExecutable().getSignature(), classesList);
-		                    				Parameter p = new Parameter(param.getType().getSimpleName(), param.toString(), (methodParam != null ? methodParam.getParameters().get(0).toString() : "nome do metodo"));
+		                    				CtConstructor<?> constructor = SpoonUtil.getCtConstructorFromMethodSignatureAndClassName(ctConstructorCall.getExecutable().getSignature(), ctConstructorCall.getExecutable().getDeclaringType().getSimpleName(), this.graphProject.getLauncher());
+		                    				//CtMethod methodParam = getMethodBySignature(ctConstructorCall.getExecutable().getSignature(), classesList);
+		                    				Parameter p = new Parameter(param.getType().getSimpleName(), param.toString(), (constructor != null ? constructor.getParameters().get(0).toString() : "nome do metodo"));
 											parameters.add(p);
 										}	
 	                    				

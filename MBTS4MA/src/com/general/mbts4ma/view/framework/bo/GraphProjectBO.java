@@ -636,7 +636,8 @@ public class GraphProjectBO implements Serializable {
 				for (EventInstance ei : eis) {
 					if (checkIfEventInstanceWasCreatedByUser(graphProject, ei)) {
 						thereIsEventInstanceCreatedByUser = true;
-						eventInstanceIndexCreatedByUser.add(ei.getTestCaseMethodName());
+						if (!eventInstanceIndexCreatedByUser.contains(ei.getTestCaseMethodName()))
+							eventInstanceIndexCreatedByUser.add(ei.getTestCaseMethodName());
 					}
 				}
 				
@@ -652,6 +653,7 @@ public class GraphProjectBO implements Serializable {
 					
 					//Cria o método e inicia o bloco
 					CtMethod<?> newMethod = graphProject.getLauncher().getFactory().createMethod();
+					newMethod.setSimpleName(testCaseMethodName);
 					CtBlock<?> ctBlock = graphProject.getLauncher().getFactory().createBlock();				
 					newMethod.setBody(ctBlock);
 					
@@ -705,8 +707,10 @@ public class GraphProjectBO implements Serializable {
 				//Apenas transforma a CES em um método e adiciona ao MethodsToCreate
 				for (Vertex vertex : ces) {
 					String statementStr = getStatementFromVertex(graphProject, vertex, null);
-					CtStatement statement = graphProject.getLauncher().getFactory().createCodeSnippetStatement(statementStr);
-					ctBlock.addStatement(statement);
+					if (statementStr != null) {
+						CtStatement statement = graphProject.getLauncher().getFactory().createCodeSnippetStatement(statementStr);
+						ctBlock.addStatement(statement);
+					}
 				}
 				methodsToCreate.add(newMethod);
 			}
@@ -734,7 +738,7 @@ public class GraphProjectBO implements Serializable {
 		
 		CtConstructor<?> constructor = null;
 		if (ctMethod == null)
-			constructor = SpoonUtil.getConstructorFromMethodSignatureAndClassName(methodSignature, className, graphProject.getLauncher());
+			constructor = SpoonUtil.getCtConstructorFromMethodSignatureAndClassName(methodSignature, className, graphProject.getLauncher());
 		
 		
 		if (ctMethod == null && constructor == null)
@@ -768,7 +772,7 @@ public class GraphProjectBO implements Serializable {
 				
 				for (Parameter p : ei.getParameters()) {
 				
-					if (ctParameter.getSimpleName().equals(p.getName()) || ctParameter.getSimpleName().contains(p.getName())) {
+					if (ctParameter.getSimpleName().equals(p.getName()) || ctParameter.getSimpleName().contains(p.getName()) || (ctParameter.getType().getSimpleName() + " " + ctParameter.getSimpleName()).equals(p.getName())) {
 						if (!setParamsStr.equals(""))
 							setParamsStr += ",";
 						statement += p.getValue();
@@ -780,59 +784,6 @@ public class GraphProjectBO implements Serializable {
 		}
 		
 		statement += setParamsStr + ")";
-		
-		/*String getParamsStr = null;	
-		Pattern pattern = Pattern.compile("\\((.*?)\\)");
-        Matcher match = pattern.matcher(vertexMethod);
-        while (match.find()) {        
-        	String found = match.group().trim();
-        	
-        	if (!found.equals(""))
-        		getParamsStr = found.replace("(", "").replace(")", "");
-        }
-		
-        String methodName = null;
-        
-        pattern = Pattern.compile("::(.*?)\\(");
-        match = pattern.matcher(vertexMethod);
-        while (match.find()) {        
-        	String found = match.group().trim();
-        	
-        	if (!found.equals(""))
-        		methodName = found.replaceAll(" ", "");
-        }
-        
-		
-		
-		String signatureMethod = (vertexMethod.split("::"))[1];
-		
-		String[] methodNameAux = ((signatureMethod.split("("))[0]).split(" ");
-		String methodName = methodNameAux[methodNameAux.length-1];
-				
-		String aux = (signatureMethod.split("("))[1];
-		String aux2 = (aux.split(")"))[0];
-		String[] params = aux2.split(",");
-		
-		String statement = methodName + "(";
-		
-		if (ei != null) {
-			for (int i = 0; i < params.length; i++) {
-				String paramName = params[i];
-				
-				ArrayList<Parameter> p = ei.getParameters();
-				
-				for (Parameter parameter : p) {
-					if (parameter.getName().equals(paramName.split(" ")[1])) {
-						statement += parameter.getValue();
-					}
-				}
-				
-				if (i < params.length-1)
-					statement += ", ";
-				
-			}
-		}
-		statement += ");";*/
 		
 		return statement;
 	}
