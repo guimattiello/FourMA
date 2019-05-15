@@ -733,21 +733,27 @@ public class GraphProjectBO implements Serializable {
 		
 		String methodSignature = split[1];
 		String className = split[0];
-		
+			
 		CtMethod<?> ctMethod = SpoonUtil.getCtMethodFromMethodSignatureAndClassName(methodSignature, className, graphProject.getLauncher());
 		
 		CtConstructor<?> constructor = null;
 		if (ctMethod == null)
 			constructor = SpoonUtil.getCtConstructorFromMethodSignatureAndClassName(methodSignature, className, graphProject.getLauncher());
 		
-		
-		if (ctMethod == null && constructor == null)
-			return  null;
-		
 		String statement = "";
 		List<CtParameter<?>> params = null;
 		
-		if (ctMethod != null) {
+		if (methodSignature.contains("assertEquals") || methodSignature.contains("assertTrue") || methodSignature.equals("assertFalse")) {
+		
+			if (methodSignature.contains("assertEquals") && ei != null && ei.getParameters().size() == 2) {
+				statement = "assertEquals(" + ei.getParameters().get(0).getValue() + ", " + ei.getParameters().get(1).getValue();
+			} else if (methodSignature.contains("assertTrue") && ei != null && ei.getParameters().size() == 1){
+				statement = "assertTrue(" + ei.getParameters().get(0).getValue();
+			} else if (methodSignature.contains("assertFalse") && ei != null && ei.getParameters().size() == 1){
+				statement = "assertFalse(" + ei.getParameters().get(0).getValue();
+			}
+			
+		} else if (ctMethod != null) {
 			statement = ctMethod.getSimpleName() + "(";
 			params = ctMethod.getParameters();
 		} else if (constructor != null) {
@@ -762,11 +768,13 @@ public class GraphProjectBO implements Serializable {
 	        }
 			statement = "new "+methodSignature.replace(getParamsStr, "")+"(";			
 			params = constructor.getParameters();
+		} else {
+			return  null;
 		}
 		
 		String setParamsStr = "";
 		
-		if (ei != null) {				
+		if (ei != null && params != null) {				
 			
 			for (CtParameter<?> ctParameter : params) {
 				
