@@ -766,7 +766,8 @@ public class GraphProjectBO implements Serializable {
 	        	if (!found.equals(""))
 	        		getParamsStr = found;
 	        }
-			statement = "new "+methodSignature.replace(getParamsStr, "")+"(";			
+	        String constructorClassName = methodSignature.replace(getParamsStr, "");
+			statement = constructorClassName + " " + constructorClassName.toLowerCase() + " = " + "new " + constructorClassName + "(";
 			params = constructor.getParameters();
 		} else {
 			return  null;
