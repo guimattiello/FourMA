@@ -322,8 +322,17 @@ public class CustomGraphActions {
 						if (isVertex(vertice) && !isStartVertex(vertice) && !isEndVertex(vertice) && !isGeneratedEventVertex(vertice)) {
 							vertice.setStyle(MainView.EVENT_VERTEX);
 							
-							if (this.graphProject.getIsWebProject())
-								vertice.setValue(this.label);
+							if (this.graphProject.getIsWebProject()) {
+								if (this.label.contains("java.org.junit.Assert")) {
+									if (this.label.contains("assertEquals"))
+										vertice.setValue("ASSERT \n assertEquals");
+									else if (this.label.contains("assertTrue"))
+										vertice.setValue("ASSERT \n assertTrue");
+								} else {
+									String[] aux = this.label.split("\\(");
+									vertice.setValue((aux.length > 0 ? aux[0] : this.label));
+								}
+							}
 
 							this.graphProject.updateMethodTemplateByVertice(vertice.getId(), this.label);
 

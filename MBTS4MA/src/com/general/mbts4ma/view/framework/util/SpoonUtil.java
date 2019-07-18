@@ -74,4 +74,29 @@ public class SpoonUtil {
 		return null;
 	}
 	
+	public static CtMethod<?> getMethodBySignature(String signature, List<CtType<?>> classesList) {
+		
+		for (CtType<?> type : classesList) {
+			Set<CtMethod<?>> ctMethods = type.getMethods();
+			for (CtMethod<?> method : ctMethods) { 
+				if (method.getSignature().equals(signature)) {
+					return method;
+				}
+			}
+		}
+		
+		return null;
+		
+	}
+	
+	public static String getSignatureFromMethodTemplate(String methodTemplate) {
+		if (methodTemplate.indexOf("::") != -1) {
+			methodTemplate = methodTemplate.replace("\n", "");
+			String[] aux = methodTemplate.split("::");
+			return aux[1];
+		}
+		
+		return methodTemplate;
+	}
+	
 }

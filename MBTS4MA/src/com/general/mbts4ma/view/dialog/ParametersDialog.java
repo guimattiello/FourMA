@@ -34,9 +34,13 @@ import javax.swing.event.TableColumnModelEvent;
 import com.general.mbts4ma.EventInstance;
 import com.general.mbts4ma.Parameter;
 import com.general.mbts4ma.view.MainView;
+import com.general.mbts4ma.view.framework.util.SpoonUtil;
 import com.general.mbts4ma.view.framework.vo.GraphProjectVO;
 import com.mxgraph.model.mxCell;
 import com.mxgraph.util.svg.ParseException;
+
+import spoon.reflect.declaration.CtMethod;
+import spoon.reflect.declaration.CtParameter;
 
 public class ParametersDialog extends JDialog {
 
@@ -98,14 +102,36 @@ public class ParametersDialog extends JDialog {
 			this.tblEventProperties.setAutoCreateColumnsFromModel(false);
 		} else {
 			header.add("id");
-			header.add("P1 : String");			
 			if (graphProject.getIsWebProject()) {
+				String idVertex = this.vertice.getId();
+				String methodSignature = this.graphProject.getMethodTemplatesByVertices().get(idVertex);
+				if (methodSignature.contains("assertEquals") || methodSignature.contains("assertTrue") || methodSignature.equals("assertFalse")) {
+					
+					if (methodSignature.contains("assertEquals")) {
+						header.add("String expected : String");
+						header.add("String real : String");						
+					} else if (methodSignature.contains("assertTrue")){
+						header.add("boolean condition : boolean");	
+					} else if (methodSignature.contains("assertFalse")){
+						header.add("boolean condition : boolean");
+					}
+					
+				} else {				
+					CtMethod<?> method = SpoonUtil.getMethodBySignature(SpoonUtil.getSignatureFromMethodTemplate(methodSignature), this.graphProject.getLauncher().getFactory().Class().getAll());
+									
+					for (CtParameter<?> param : method.getParameters()) {
+						header.add(param.getType() + " " + param.getSimpleName() + " : " + param.getType());
+					}
+				}
+				
 				header.add("testCaseName");
 				header.add("createdAutomatically");
 				
-				this.tblEventProperties.setModel(new javax.swing.table.DefaultTableModel(new Object[][] { { "-", null } },
-						new String[] { "id", "P1 : String", "testCaseName", "createdAutomatically" }));
+				String[] headerStr = header.toArray(new String[header.size()]);
+				this.tblEventProperties.setModel(new javax.swing.table.DefaultTableModel(new Object[][] { { "-", null } }, headerStr));
+				//this.tblEventProperties.setModel(new javax.swing.table.DefaultTableModel(new Object[][] { { "-", null } }, new String[] { "id", "P1 : String", "testCaseName", "createdAutomatically" }));
 			} else {
+				header.add("P1 : String");	
 				this.tblEventProperties.setModel(new javax.swing.table.DefaultTableModel(new Object[][] { { "-", null } },
 					new String[] { "id", "P1 : String" }));
 			}
@@ -156,7 +182,7 @@ public class ParametersDialog extends JDialog {
 
 		this.setTitle("Parameters");
 
-		this.setBounds(100, 100, 360 + 100, 250 + 100);
+		this.setBounds(100, 100, 560 + 100, 450 + 100);
 		this.getContentPane().setLayout(new BorderLayout());
 		this.contentPanel.setBorder(new EmptyBorder(5, 5, 5, 5));
 		this.setModal(true);
@@ -175,7 +201,7 @@ public class ParametersDialog extends JDialog {
 				lastColumnIndex = tcme.getToIndex();
 			}
 		};
-
+		
 		this.tblEventProperties.getTableHeader().addMouseListener(new HeaderSelector(this.values));
 
 		this.tblEventProperties.setFont(new Font("Verdana", Font.PLAIN, 12));

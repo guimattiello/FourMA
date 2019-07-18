@@ -519,6 +519,11 @@ public class MainView extends JFrame {
 						} else { //Senão é web project
 							//ArrayList<String> pageObjectsPath = new ArrayList(Arrays.asList(graphProject.getWebProjectPageObject().split(",")));
 							
+							JMenu assertsTemplatesMenu = new JMenu("ASSERTS");
+							assertsTemplatesMenu.add(MainView.this.bind("assertEquals(Object expected, Object actual)", CustomGraphActions.getDefineMethodTemplateAction(MainView.this.graphProject, "java.org.junit.Assert::assertEquals(java.lang.Object,java.lang.Object)")));
+							assertsTemplatesMenu.add(MainView.this.bind("assertTrue(Object condition)", CustomGraphActions.getDefineMethodTemplateAction(MainView.this.graphProject, "java.org.junit.Assert::assertTrue(java.lang.Object)")));
+							popup.add(assertsTemplatesMenu);
+							
 							JMenu pageObjectsTemplatesMenu;
 							
 							Map<String, String> metodosWeb;
@@ -820,7 +825,7 @@ public class MainView extends JFrame {
 	                    		
 	                    		if ((ctElement instanceof CtInvocation || ctElement instanceof CtConstructorCall) && (isAssert(ctElement) || relatedToAProjectClass(ctElement))) {
 	                    			
-	                    			CtInvocation ctInvocation = null;	                    			
+	                    			CtInvocation ctInvocation = null;
 	                    			CtConstructorCall ctConstructorCall = null;
 	                    			
 	                    			String methodUniqueName = "";
@@ -838,10 +843,10 @@ public class MainView extends JFrame {
 		                    			int countNameParam = 0;
 		                    			
 		                    			for (CtExpression<?> param : args) {
-		                    				countNameParam++;
-		                    				CtMethod methodParam = getMethodBySignature(ctInvocation.getExecutable().getSignature(), classesList);
-		                    				Parameter p = new Parameter(param.getType().getSimpleName(), param.toString(), (methodParam != null ? methodParam.getParameters().get(0).toString() : "nome do metodo"));
+		                    				CtMethod<?> methodParam = getMethodBySignature(ctInvocation.getExecutable().getSignature(), classesList);
+		                    				Parameter p = new Parameter(param.getType().getSimpleName(), param.toString(), (methodParam != null ? methodParam.getParameters().get(countNameParam).toString() : "nome do metodo"));
 											parameters.add(p);
+											countNameParam++;
 										}		                    			
 		                    			
 		                    			methodUniqueName = ctInvocation.getTarget().getType() + "::" + ctInvocation.getExecutable();

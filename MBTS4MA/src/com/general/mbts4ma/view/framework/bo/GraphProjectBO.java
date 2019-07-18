@@ -7,6 +7,7 @@ import java.io.FileOutputStream;
 import java.io.IOException;
 import java.io.Serializable;
 import java.lang.reflect.Constructor;
+import java.lang.reflect.Modifier;
 import java.net.URLEncoder;
 import java.util.ArrayList;
 import java.util.Iterator;
@@ -50,6 +51,9 @@ import spoon.reflect.code.CtStatement;
 import spoon.reflect.declaration.CtConstructor;
 import spoon.reflect.declaration.CtMethod;
 import spoon.reflect.declaration.CtParameter;
+import spoon.reflect.declaration.ModifierKind;
+import spoon.reflect.factory.TypeFactory;
+import spoon.reflect.reference.CtTypeReference;
 
 public class GraphProjectBO implements Serializable {
 
@@ -653,13 +657,12 @@ public class GraphProjectBO implements Serializable {
 					
 					//Cria o método e inicia o bloco
 					CtMethod<?> newMethod = graphProject.getLauncher().getFactory().createMethod();
-					newMethod.setSimpleName(testCaseMethodName);
+					newMethod.addModifier(ModifierKind.PUBLIC);					
+					newMethod.setSimpleName("CT" + UUID.randomUUID().toString().replace("-", "") + testCaseMethodName);
 					CtBlock<?> ctBlock = graphProject.getLauncher().getFactory().createBlock();				
 					newMethod.setBody(ctBlock);
 					
 					boolean existConsistentEventInstanceForThisCES = true;
-												
-					//graphProject.getLauncher().getFactory().createCodeSnippetStatement("");
 					
 					for (Vertex vertex : ces) {
 											
@@ -701,7 +704,9 @@ public class GraphProjectBO implements Serializable {
 			} else if (thereIsVerticesCreatedByUser) {
 				//Cria o método e inicia o bloco
 				CtMethod<?> newMethod = graphProject.getLauncher().getFactory().createMethod();
-				CtBlock<?> ctBlock = graphProject.getLauncher().getFactory().createBlock();				
+				newMethod.addModifier(ModifierKind.PUBLIC);
+				newMethod.setSimpleName("CT" + UUID.randomUUID().toString().replace("-", ""));
+				CtBlock<?> ctBlock = graphProject.getLauncher().getFactory().createBlock();
 				newMethod.setBody(ctBlock);
 				
 				//Apenas transforma a CES em um método e adiciona ao MethodsToCreate
@@ -765,8 +770,12 @@ public class GraphProjectBO implements Serializable {
 	        	
 	        	if (!found.equals(""))
 	        		getParamsStr = found;
-	        }
+	        }	        
 	        String constructorClassName = methodSignature.replace(getParamsStr, "");
+	        if (constructorClassName.indexOf(".") != -1) {
+	        	String[] aux = constructorClassName.split("\\.");
+	        	constructorClassName = aux[aux.length-1];
+	        }
 			statement = constructorClassName + " " + constructorClassName.toLowerCase() + " = " + "new " + constructorClassName + "(";
 			params = constructor.getParameters();
 		} else {
@@ -783,12 +792,10 @@ public class GraphProjectBO implements Serializable {
 				
 					if (ctParameter.getSimpleName().equals(p.getName()) || ctParameter.getSimpleName().contains(p.getName()) || (ctParameter.getType().getSimpleName() + " " + ctParameter.getSimpleName()).equals(p.getName())) {
 						if (!setParamsStr.equals(""))
-							setParamsStr += ",";
-						statement += p.getValue();
+							setParamsStr += ", ";
+						setParamsStr += p.getValue();
 					}
-				
 				}
-				
 			}
 		}
 		

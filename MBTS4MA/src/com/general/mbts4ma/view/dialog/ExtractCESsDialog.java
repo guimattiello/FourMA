@@ -199,11 +199,11 @@ public class ExtractCESsDialog extends JDialog {
 				
 			if (GraphProjectBO.generateTestingWebCodeSnippetsFiles(this.graphProject, this.cess)) {	
 				JOptionPane.showMessageDialog(null, "Testing code snippet successfully generated.", "Attention", JOptionPane.INFORMATION_MESSAGE);	
-				try {
+				/*try {
 					Desktop.getDesktop().open(this.graphProject.getLauncher().getEnvironment().getSourceOutputDirectory());
 				} catch (IOException e) {
 					e.printStackTrace();
-				}
+				}*/
 			} else {
 				JOptionPane.showMessageDialog(null, "Check the parameters consistency!", "Attention", JOptionPane.INFORMATION_MESSAGE);
 			}
