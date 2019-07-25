@@ -22,6 +22,8 @@ import java.util.regex.Pattern;
 import javax.swing.JOptionPane;
 
 import org.apache.commons.io.FileUtils;
+import org.jgraph.graph.Edge;
+import org.jgrapht.alg.DijkstraShortestPath;
 import org.w3c.dom.Document;
 
 import com.general.mbts4ma.EventInstance;
@@ -36,8 +38,14 @@ import com.general.mbts4ma.view.framework.util.SpoonUtil;
 import com.general.mbts4ma.view.framework.util.StringUtil;
 import com.general.mbts4ma.view.framework.vo.GraphProjectVO;
 import com.github.eta.esg.Vertex;
+import com.mxgraph.analysis.mxConstantCostFunction;
+import com.mxgraph.analysis.mxDistanceCostFunction;
+import com.mxgraph.analysis.mxGraphAnalysis;
+import com.mxgraph.analysis.mxICostFunction;
+import com.mxgraph.costfunction.mxConstCostFunction;
 import com.mxgraph.io.mxCodec;
 import com.mxgraph.model.mxCell;
+import com.mxgraph.model.mxGraphModel;
 import com.mxgraph.swing.mxGraphComponent;
 import com.mxgraph.util.mxCellRenderer;
 import com.mxgraph.util.mxUtils;
@@ -614,7 +622,163 @@ public class GraphProjectBO implements Serializable {
 		return true;
 	}
 	
-	private static synchronized List<CtMethod<?>> getMethodsToCreateFromCES(GraphProjectVO graphProject, List<Vertex> ces) {
+	private static synchronized List<CtMethod<?>> getMethodsToCreateFromCES(GraphProjectVO graphProject, List<Vertex> ces, mxGraph graph) {
+		
+		List<CtMethod<?>> methodsToCreate = new ArrayList<CtMethod<?>>();
+		
+		mxICostFunction mcf = new mxConstCostFunction(1.00d);
+		mxGraphAnalysis mga = mxGraphAnalysis.getInstance();
+		
+		//Find paths covering all event instances
+		ArrayList<String> eventInstanceGroups = graphProject.getDistinctGroupNameOfEventInstances();
+		
+		for (String eventInstanceGroup : eventInstanceGroups) {
+			
+			ArrayList<EventInstance> eis = new ArrayList<EventInstance>();
+			
+			ArrayList<String> verticesId = new ArrayList<String>();
+			
+			for (Map.Entry<String, ArrayList<EventInstance>> entry : graphProject.getEventInstanceByVertices().entrySet()) {
+				for (EventInstance ei : entry.getValue()) {
+					if (ei.getTestCaseMethodName().equals(eventInstanceGroup)) {
+						verticesId.add(entry.getKey());
+					}
+				}
+			}
+			
+			ArrayList<Object> path = new ArrayList<Object>();			
+			
+			mxCell vertexA = (mxCell) ((mxGraphModel)graph.getModel()).getCell(MainView.ID_START_VERTEX);
+			
+			path.add(vertexA);
+			
+			verticesId.add(MainView.ID_END_VERTEX);
+					
+			while (!verticesId.isEmpty()) {
+				
+				int pathLength = -1;
+				String idShorterPath = null;
+				Object[] nextPath = null;
+				
+				for (String id : verticesId) {
+					
+					mxCell aux = (mxCell) ((mxGraphModel)graph.getModel()).getCell(id);
+					
+					Object[] elements = mga.getShortestPath(graph, vertexA, aux, mcf, 1000, true);
+					
+					if (pathLength == -1 || elements.length < pathLength) {
+						pathLength = elements.length;
+						idShorterPath = id;
+						nextPath = elements.clone();
+					}
+					
+				}
+				
+				verticesId.remove(idShorterPath);
+				
+				for (Object element : nextPath) {
+					if (nextPath[0] != element)
+						path.add(element);
+				}
+				
+				vertexA = (mxCell) ((mxGraphModel)graph.getModel()).getCell(idShorterPath);
+				
+			}
+			
+			methodsToCreate.add(createMethodFromPath(graphProject, path, eventInstanceGroup));
+						
+		}
+		
+		//Find paths covering all new edges
+		ArrayList<String> newEdgesCreatedByUser = (ArrayList<String>) graphProject.getEdgesCreatedByUser().clone();			
+		
+		while (!newEdgesCreatedByUser.isEmpty()) {
+			
+			String newEdgeId = newEdgesCreatedByUser.get(0);
+			mxCell newEdge = (mxCell) ((mxGraphModel)graph.getModel()).getCell(newEdgeId);
+			
+			mxCell startVertex = (mxCell) ((mxGraphModel)graph.getModel()).getCell(MainView.ID_START_VERTEX);
+			mxCell endVertex = (mxCell) ((mxGraphModel)graph.getModel()).getCell(MainView.ID_END_VERTEX);
+			mxCell sourceVertex = (mxCell)newEdge.getSource();
+			mxCell terminalVertex = (mxCell)newEdge.getTerminal(false);
+
+			Object[] pathA = mga.getShortestPath(graph, startVertex, sourceVertex, mcf, 1000, true);
+			Object[] pathB = mga.getShortestPath(graph, terminalVertex, endVertex, mcf, 1000, true);
+			
+			ArrayList<Object> path = new ArrayList<Object>();
+			
+			for (Object element : pathA) {
+				path.add(element);
+			}
+			
+			path.add(newEdge);
+			
+			for (Object element : pathB) {
+				path.add(element);
+			}
+			
+			methodsToCreate.add(createMethodFromPath(graphProject, path, null));
+						
+			//Update remaining edges to be covered
+			newEdgesCreatedByUser.remove(newEdgeId);
+			ArrayList<String> removeFromEdgesRemaining = new ArrayList<String>();
+			for (String edge : newEdgesCreatedByUser) {
+				for (Object element : path) {
+					mxCell e = (mxCell) element;
+					if (e.getId().equals(edge))
+						removeFromEdgesRemaining.add(edge);
+				}
+			}
+			for (String edge : removeFromEdgesRemaining) {
+				newEdgesCreatedByUser.remove(edge);
+			}
+			
+		}
+				
+		System.out.println(methodsToCreate.toString());
+		
+		return methodsToCreate;
+	}
+	
+	public static synchronized CtMethod<?> createMethodFromPath(GraphProjectVO graphProject, ArrayList<Object> path, String eventInstanceToUse) {
+		//Cria o método e inicia o bloco
+		CtMethod<?> newMethod = graphProject.getLauncher().getFactory().createMethod();
+		newMethod.addModifier(ModifierKind.PUBLIC);
+		newMethod.setSimpleName("CT" + UUID.randomUUID().toString().replace("-", ""));
+		CtBlock<?> ctBlock = graphProject.getLauncher().getFactory().createBlock();
+		newMethod.setBody(ctBlock);
+		
+		//Generate testscript from path
+		for (int i = 0; i < path.size(); i++) {
+			
+			if (i % 2 == 0) {
+				//A variável PARAM que define qual será o eventInstance usado para gerar o statement, por padrão é o primeiro EventInstance
+				mxCell vertex = (mxCell) path.get(i);
+				ArrayList<EventInstance> eventInstances = graphProject.getEventInstanceByVertice(vertex.getId());
+				EventInstance param = null;
+				if (eventInstances != null && !eventInstances.isEmpty()) {
+					param = eventInstances.get(0);
+					if (eventInstanceToUse != null) {
+						for (EventInstance ei : eventInstances) {
+							if (ei.getTestCaseMethodName().equals(eventInstanceToUse)) {
+								param = ei;
+							}
+						}
+					}
+				}
+				String statementStr = getStatementFromVertex(graphProject, vertex.getId(), param);
+				if (statementStr != null) {
+					CtStatement statement = graphProject.getLauncher().getFactory().createCodeSnippetStatement(statementStr);
+					ctBlock.addStatement(statement);
+				}
+			}
+			
+		}
+		
+		return newMethod;
+	}
+	
+	private static synchronized List<CtMethod<?>> getMethodsToCreateFromCESNAOMAISUSADO(GraphProjectVO graphProject, List<Vertex> ces) {
 		
 		List<CtMethod<?>> methodsToCreate = new ArrayList<CtMethod<?>>();				
 		
@@ -687,7 +851,7 @@ public class GraphProjectBO implements Serializable {
 							}
 													
 							//Cria o statement para incluir no método
-							String statementStr = getStatementFromVertex(graphProject, vertex, ei);
+							String statementStr = getStatementFromVertex(graphProject, vertex.getId(), ei);
 							if (statementStr != null) {
 								CtStatement statement = graphProject.getLauncher().getFactory().createCodeSnippetStatement(statementStr);
 								ctBlock.addStatement(statement);
@@ -711,7 +875,7 @@ public class GraphProjectBO implements Serializable {
 				
 				//Apenas transforma a CES em um método e adiciona ao MethodsToCreate
 				for (Vertex vertex : ces) {
-					String statementStr = getStatementFromVertex(graphProject, vertex, null);
+					String statementStr = getStatementFromVertex(graphProject, vertex.getId(), null);
 					if (statementStr != null) {
 						CtStatement statement = graphProject.getLauncher().getFactory().createCodeSnippetStatement(statementStr);
 						ctBlock.addStatement(statement);
@@ -725,9 +889,9 @@ public class GraphProjectBO implements Serializable {
 		return methodsToCreate;
 	}
 	
-	private static synchronized String getStatementFromVertex(GraphProjectVO graphProject, Vertex vertex, EventInstance ei) {
+	private static synchronized String getStatementFromVertex(GraphProjectVO graphProject, String vertexId, EventInstance ei) {
 		
-		String vertexMethod = graphProject.getMethodTemplatesByVertices().get(vertex.getId());
+		String vertexMethod = graphProject.getMethodTemplatesByVertices().get(vertexId);
 		
 		if (vertexMethod == null)
 			return null;
@@ -804,24 +968,17 @@ public class GraphProjectBO implements Serializable {
 		return statement;
 	}
 	
-	public static synchronized boolean generateTestingWebCodeSnippetsFiles(GraphProjectVO graphProject, List<List<Vertex>> cess) throws Exception {
+	public static synchronized boolean generateTestingWebCodeSnippetsFiles(GraphProjectVO graphProject, List<List<Vertex>> cess, mxGraph graph) throws Exception {
 	
 		if (cess != null && !cess.isEmpty()) {
-			StringBuilder testingMethodBodies = new StringBuilder("");
 
-			int count = 1;
-
-			for (List<Vertex> ces : cess) {
+			//for (List<Vertex> ces : cess) {
 				
-				/*if (!checkWebParametersConsistency(graphProject, ces)) {
-					return false;
-				}*/
+				List<CtMethod<?>> methods = getMethodsToCreateFromCES(graphProject, null, graph);
 				
-				List<CtMethod<?>> methods = getMethodsToCreateFromCES(graphProject, ces);
+				//System.out.println(methods);
 				
-				System.out.println(methods);
-				
-			}
+			//}
 
 		}
 		

@@ -43,6 +43,7 @@ public class GraphProjectVO extends AbstractVO implements Serializable {
 	private String dbpassword;
 	
 	private ArrayList<String> verticesCreatedByUser;
+	private ArrayList<String> edgesCreatedByUser;
 	
 	/** END WEB PROJECT VARIABLES **/
 	
@@ -160,6 +161,30 @@ public class GraphProjectVO extends AbstractVO implements Serializable {
 		}
 		
 		return this.verticesCreatedByUser;
+	}
+	
+	public void setEdgesCreatedByUser(ArrayList<String> edgesCreatedByUser){
+		this.edgesCreatedByUser = edgesCreatedByUser;
+	}
+
+	public ArrayList<String> getEdgesCreatedByUser(){
+		if (this.edgesCreatedByUser == null) {
+			this.edgesCreatedByUser = new ArrayList<String>();
+		}
+		
+		return this.edgesCreatedByUser;
+	}
+	
+	public ArrayList<String> getDistinctGroupNameOfEventInstances() {
+		ArrayList<String> distinctGroupNames = new ArrayList<String>();
+		for (Map.Entry<String, ArrayList<EventInstance>> entry : this.eventInstanceByVertice.entrySet()) {
+			for (EventInstance ei : entry.getValue()) {
+				if (!ei.getCreatedAutomatically() && !distinctGroupNames.contains(ei.getTestCaseMethodName())) {
+					distinctGroupNames.add(ei.getTestCaseMethodName());
+				}
+			}
+		}
+		return distinctGroupNames;
 	}
 	
 	public void setTestClasses(List<TestClass> testClasses){

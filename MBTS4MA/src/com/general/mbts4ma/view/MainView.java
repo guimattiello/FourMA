@@ -426,6 +426,14 @@ public class MainView extends JFrame {
 			}
 		}); */
 
+		
+		this.graphComponent.getConnectionHandler().addListener(mxEvent.CONNECT, new mxIEventListener(){
+			public void invoke(Object sender, mxEventObject evt) {
+				mxCell newEdge = (mxCell) evt.getProperty("cell");
+				MainView.this.graphProject.getEdgesCreatedByUser().add(newEdge.getId());
+			}
+		});
+		
 		this.graph.addListener(mxEvent.CELLS_REMOVED, new mxIEventListener() {
 
 			@Override

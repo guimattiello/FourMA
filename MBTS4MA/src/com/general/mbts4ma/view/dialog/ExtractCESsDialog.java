@@ -197,7 +197,7 @@ public class ExtractCESsDialog extends JDialog {
 			JOptionPane.showMessageDialog(null, "There is no output webproject test directory set up.", "Error", JOptionPane.INFORMATION_MESSAGE);
 		} else {
 				
-			if (GraphProjectBO.generateTestingWebCodeSnippetsFiles(this.graphProject, this.cess)) {	
+			if (GraphProjectBO.generateTestingWebCodeSnippetsFiles(this.graphProject, this.cess, this.graph)) {	
 				JOptionPane.showMessageDialog(null, "Testing code snippet successfully generated.", "Attention", JOptionPane.INFORMATION_MESSAGE);	
 				/*try {
 					Desktop.getDesktop().open(this.graphProject.getLauncher().getEnvironment().getSourceOutputDirectory());
