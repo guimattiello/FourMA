@@ -632,9 +632,16 @@ public class GraphProjectBO implements Serializable {
 		//Find paths covering all event instances
 		ArrayList<String> eventInstanceGroups = graphProject.getDistinctGroupNameOfEventInstances();
 		
+		//Find paths covering all new edges
+		Map<String, ArrayList<String>> newEdgesCreatedByUser = new LinkedHashMap<String, ArrayList<String>>();
+		
+		for (Map.Entry<String, ArrayList<String>> entry : graphProject.getEdgesCreatedByUser().entrySet()) {
+		    String key = entry.getKey();
+		    ArrayList<String> value = entry.getValue();
+		    newEdgesCreatedByUser.put(key, (ArrayList<String>) value.clone());
+		}
+		
 		for (String eventInstanceGroup : eventInstanceGroups) {
-			
-			ArrayList<EventInstance> eis = new ArrayList<EventInstance>();
 			
 			ArrayList<String> verticesId = new ArrayList<String>();
 			
@@ -684,17 +691,31 @@ public class GraphProjectBO implements Serializable {
 				vertexA = (mxCell) ((mxGraphModel)graph.getModel()).getCell(idShorterPath);
 				
 			}
+			ArrayList<String> eventInstanceToUse = new ArrayList<String>();
+			eventInstanceToUse.add(eventInstanceGroup);
+			methodsToCreate.add(createMethodFromPath(graphProject, path, eventInstanceToUse));
 			
-			methodsToCreate.add(createMethodFromPath(graphProject, path, eventInstanceGroup));
+			//Update remaining edges to be covered
+			ArrayList<String> removeFromEdgesRemaining = new ArrayList<String>();
+			for (Map.Entry<String, ArrayList<String>> entry : newEdgesCreatedByUser.entrySet()) {
+			    String key = entry.getKey();			    
+				for (Object element : path) {
+					mxCell e = (mxCell) element;
+					if (e.getId().equals(key))
+						removeFromEdgesRemaining.add(key);
+				}
+			}
+			for (String edge : removeFromEdgesRemaining) {
+				newEdgesCreatedByUser.remove(edge);
+			}
 						
 		}
 		
-		//Find paths covering all new edges
-		ArrayList<String> newEdgesCreatedByUser = (ArrayList<String>) graphProject.getEdgesCreatedByUser().clone();			
-		
 		while (!newEdgesCreatedByUser.isEmpty()) {
 			
-			String newEdgeId = newEdgesCreatedByUser.get(0);
+			Map.Entry<String,ArrayList<String>> entry = newEdgesCreatedByUser.entrySet().iterator().next();
+		 	String newEdgeId = entry.getKey();
+			
 			mxCell newEdge = (mxCell) ((mxGraphModel)graph.getModel()).getCell(newEdgeId);
 			
 			mxCell startVertex = (mxCell) ((mxGraphModel)graph.getModel()).getCell(MainView.ID_START_VERTEX);
@@ -717,16 +738,16 @@ public class GraphProjectBO implements Serializable {
 				path.add(element);
 			}
 			
-			methodsToCreate.add(createMethodFromPath(graphProject, path, null));
+			methodsToCreate.add(createMethodFromPath(graphProject, path, graphProject.getEdgesCreatedByUser().get(newEdgeId)));
 						
 			//Update remaining edges to be covered
-			newEdgesCreatedByUser.remove(newEdgeId);
 			ArrayList<String> removeFromEdgesRemaining = new ArrayList<String>();
-			for (String edge : newEdgesCreatedByUser) {
+			for (Map.Entry<String, ArrayList<String>> ei : newEdgesCreatedByUser.entrySet()) {
+			    String key = entry.getKey();			    
 				for (Object element : path) {
 					mxCell e = (mxCell) element;
-					if (e.getId().equals(edge))
-						removeFromEdgesRemaining.add(edge);
+					if (e.getId().equals(key))
+						removeFromEdgesRemaining.add(key);
 				}
 			}
 			for (String edge : removeFromEdgesRemaining) {
@@ -740,7 +761,7 @@ public class GraphProjectBO implements Serializable {
 		return methodsToCreate;
 	}
 	
-	public static synchronized CtMethod<?> createMethodFromPath(GraphProjectVO graphProject, ArrayList<Object> path, String eventInstanceToUse) {
+	public static synchronized CtMethod<?> createMethodFromPath(GraphProjectVO graphProject, ArrayList<Object> path, ArrayList<String> eventInstanceToUse) {
 		//Cria o método e inicia o bloco
 		CtMethod<?> newMethod = graphProject.getLauncher().getFactory().createMethod();
 		newMethod.addModifier(ModifierKind.PUBLIC);
@@ -758,11 +779,14 @@ public class GraphProjectBO implements Serializable {
 				EventInstance param = null;
 				if (eventInstances != null && !eventInstances.isEmpty()) {
 					param = eventInstances.get(0);
-					if (eventInstanceToUse != null) {
+					if (!eventInstanceToUse.isEmpty()) {
 						for (EventInstance ei : eventInstances) {
-							if (ei.getTestCaseMethodName().equals(eventInstanceToUse)) {
-								param = ei;
+							for (String eitouse : eventInstanceToUse) {
+								if (ei.getTestCaseMethodName().equals(eitouse)) {
+									param = ei;
+								}
 							}
+							
 						}
 					}
 				}

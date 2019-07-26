@@ -57,6 +57,7 @@ import com.general.mbts4ma.EventInstance;
 import com.general.mbts4ma.Parameter;
 import com.general.mbts4ma.view.dialog.ExtractCESsDialog;
 import com.general.mbts4ma.view.dialog.ExtractEventFlowDialog;
+import com.general.mbts4ma.view.dialog.NewEdgeEventInstancePriorityDialog;
 import com.general.mbts4ma.view.dialog.ProjectPropertiesDialog;
 import com.general.mbts4ma.view.dialog.WebProjectPropertiesDialog;
 import com.general.mbts4ma.view.framework.bo.GraphConverter;
@@ -430,7 +431,14 @@ public class MainView extends JFrame {
 		this.graphComponent.getConnectionHandler().addListener(mxEvent.CONNECT, new mxIEventListener(){
 			public void invoke(Object sender, mxEventObject evt) {
 				mxCell newEdge = (mxCell) evt.getProperty("cell");
-				MainView.this.graphProject.getEdgesCreatedByUser().add(newEdge.getId());
+				
+				NewEdgeEventInstancePriorityDialog dialog = new NewEdgeEventInstancePriorityDialog(MainView.this.graphProject);
+
+				dialog.setVisible(true);
+				
+				ArrayList<String> eventInstancesToUse = dialog.getEventInstancesToUse();
+				
+				MainView.this.graphProject.getEdgesCreatedByUser().put(newEdge.getId(), eventInstancesToUse);
 			}
 		});
 		
@@ -444,6 +452,7 @@ public class MainView extends JFrame {
 					MainView.this.graphProject.removeEventInstanceByVertices(((mxCell) oCell).getId());
 					MainView.this.graphProject.removeMethodTemplatePropertiesByVertice(((mxCell) oCell).getId());
 					MainView.this.graphProject.removeEdgeTemplateByVertice(((mxCell) oCell).getId());
+					MainView.this.graphProject.removeEdgesCreatedByUser(((mxCell) oCell).getId());
 				}
 			}
 		});
@@ -961,6 +970,9 @@ public class MainView extends JFrame {
 		                    			ei.setTestCaseMethodName(method.getSignature());
 		                    			ei.setCreatedAutomatically(true);
 			                    	
+		                    			if (!this.graphProject.getImportedTestCaseNames().contains(method.getSignature()))
+		                    				this.graphProject.getImportedTestCaseNames().add(method.getSignature());
+		                    			
 		                    			arrEI.add(ei);
 			                    		graphProject.updateEventInstanceByVertices(newVertexId, arrEI);
 		                    		}

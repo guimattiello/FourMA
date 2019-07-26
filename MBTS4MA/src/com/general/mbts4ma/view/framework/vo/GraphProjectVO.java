@@ -43,7 +43,8 @@ public class GraphProjectVO extends AbstractVO implements Serializable {
 	private String dbpassword;
 	
 	private ArrayList<String> verticesCreatedByUser;
-	private ArrayList<String> edgesCreatedByUser;
+	private Map<String,ArrayList<String>> edgesCreatedByUser;
+	private ArrayList<String> importedTestCaseNames;
 	
 	/** END WEB PROJECT VARIABLES **/
 	
@@ -163,16 +164,30 @@ public class GraphProjectVO extends AbstractVO implements Serializable {
 		return this.verticesCreatedByUser;
 	}
 	
-	public void setEdgesCreatedByUser(ArrayList<String> edgesCreatedByUser){
+	public void setEdgesCreatedByUser(Map<String, ArrayList<String>> edgesCreatedByUser){
 		this.edgesCreatedByUser = edgesCreatedByUser;
 	}
 
-	public ArrayList<String> getEdgesCreatedByUser(){
+	public Map<String, ArrayList<String>> getEdgesCreatedByUser(){
 		if (this.edgesCreatedByUser == null) {
-			this.edgesCreatedByUser = new ArrayList<String>();
+			this.edgesCreatedByUser = new LinkedHashMap<String, ArrayList<String>>();
 		}
 		
 		return this.edgesCreatedByUser;
+	}
+	
+	public void removeEdgesCreatedByUser(String id){
+		if (!this.edgesCreatedByUser.isEmpty()) {
+			this.edgesCreatedByUser.remove(id);
+		}
+	}
+	
+	public ArrayList<String> getImportedTestCaseNames(){
+		if (this.importedTestCaseNames == null) {
+			this.importedTestCaseNames = new ArrayList<String>();
+		}
+		
+		return this.importedTestCaseNames;
 	}
 	
 	public ArrayList<String> getDistinctGroupNameOfEventInstances() {
