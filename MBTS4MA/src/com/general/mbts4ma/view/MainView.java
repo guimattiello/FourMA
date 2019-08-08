@@ -437,7 +437,7 @@ public class MainView extends JFrame {
 				dialog.setVisible(true);
 				
 				ArrayList<String> eventInstancesToUse = dialog.getEventInstancesToUse();
-				
+								
 				MainView.this.graphProject.getEdgesCreatedByUser().put(newEdge.getId(), eventInstancesToUse);
 			}
 		});
@@ -535,6 +535,10 @@ public class MainView extends JFrame {
 							
 						} else { //Senão é web project
 							//ArrayList<String> pageObjectsPath = new ArrayList(Arrays.asList(graphProject.getWebProjectPageObject().split(",")));
+							
+							popup.add(MainView.this.bind("New Event Instance Restriction Here", CustomGraphActions.getNewEventInstanceRestriction(MainView.this.graphProject)));
+
+							popup.addSeparator();
 							
 							JMenu assertsTemplatesMenu = new JMenu("ASSERTS");
 							assertsTemplatesMenu.add(MainView.this.bind("assertEquals(Object expected, Object actual)", CustomGraphActions.getDefineMethodTemplateAction(MainView.this.graphProject, "java.org.junit.Assert::assertEquals(java.lang.Object,java.lang.Object)")));
@@ -730,12 +734,12 @@ public class MainView extends JFrame {
 		return false;
 	}
 	
-	private CtMethod getMethodBySignature(String signature, List<CtType<?>> classesList) {
+	private CtMethod getMethodBySignature(String signature, List<CtType<?>> classesList, String className) {
 		
 		for (CtType<?> type : classesList) {
 			Set<CtMethod<?>> ctMethods = type.getMethods();
 			for (CtMethod<?> method : ctMethods) { 
-				if (method.getSignature().equals(signature)) {
+				if (method.getSignature().equals(signature) && (className.contains(type.getSimpleName()) || (type.getSimpleName().contains(className)) || (className == null))) {
 					return method;
 				}
 			}
@@ -860,7 +864,7 @@ public class MainView extends JFrame {
 		                    			int countNameParam = 0;
 		                    			
 		                    			for (CtExpression<?> param : args) {
-		                    				CtMethod<?> methodParam = getMethodBySignature(ctInvocation.getExecutable().getSignature(), classesList);
+		                    				CtMethod<?> methodParam = getMethodBySignature(ctInvocation.getExecutable().getSignature(), classesList, ctInvocation.getExecutable().getType().toString());
 		                    				Parameter p = new Parameter(param.getType().getSimpleName(), param.toString(), (methodParam != null ? methodParam.getParameters().get(countNameParam).toString() : "nome do metodo"));
 											parameters.add(p);
 											countNameParam++;

@@ -50,9 +50,9 @@ public class SpoonUtil {
 		
 		for (CtType<?> clazz : classesList) {
 			
-			CtClass<?> ctClass = (CtClass<?>)clazz;						
+			CtClass<?> ctClass = (CtClass<?>)clazz;
 			
-			if (clazz.getSimpleName().equals(className) || clazz.getQualifiedName().equals(className)) {
+			if (clazz.getSimpleName().toLowerCase().equals(className.toLowerCase()) || clazz.getQualifiedName().toLowerCase().equals(className.toLowerCase())) {
 			
 				Set<?> constructors = ctClass.getConstructors(); 
 				
@@ -74,12 +74,12 @@ public class SpoonUtil {
 		return null;
 	}
 	
-	public static CtMethod<?> getMethodBySignature(String signature, List<CtType<?>> classesList) {
+	public static CtMethod<?> getMethodBySignature(String signature, List<CtType<?>> classesList, String className) {
 		
 		for (CtType<?> type : classesList) {
 			Set<CtMethod<?>> ctMethods = type.getMethods();
 			for (CtMethod<?> method : ctMethods) { 
-				if (method.getSignature().equals(signature)) {
+				if (method.getSignature().equals(signature) && (className.equals(type) || (className == null))) {
 					return method;
 				}
 			}

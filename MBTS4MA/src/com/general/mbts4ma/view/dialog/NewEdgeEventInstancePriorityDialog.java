@@ -60,7 +60,17 @@ public class NewEdgeEventInstancePriorityDialog extends JDialog {
 			this.isUpdate = true;
 		}
 
-		Object[] testCaseNames = this.graphProject.getImportedTestCaseNames().toArray();
+		ArrayList<String> tcNames = new ArrayList<String>();
+		
+		for (String tcname : this.graphProject.getImportedTestCaseNames()) {
+			tcNames.add(tcname);
+		}
+		
+		for (String tcname : graphProject.getDistinctGroupNameOfEventInstances()) {
+			tcNames.add(tcname);
+		}
+		
+		Object[] testCaseNames = tcNames.toArray();
 		
 		eventInstancesToUse = new ArrayList<String>();
 		
@@ -79,24 +89,28 @@ public class NewEdgeEventInstancePriorityDialog extends JDialog {
 
 		this.comboPriority1 = new JComboBox(testCaseNames);
 		this.comboPriority1.setFont(new Font("Verdana", Font.PLAIN, 12));
+		comboPriority1.setSelectedIndex(-1);
 		
 		JLabel lblDBName= new JLabel("Priority 2");
-		lblDBName.setFont(new Font("Verdana", Font.PLAIN, 12));
+		lblDBName.setFont(new Font("Verdana", Font.PLAIN, 12));		
 
 		this.comboPriority2 = new JComboBox(testCaseNames);
 		this.comboPriority2.setFont(new Font("Verdana", Font.PLAIN, 12));
+		comboPriority2.setSelectedIndex(-1);
 		
 		JLabel lblDBUser = new JLabel("Priority 3");
 		lblDBUser.setFont(new Font("Verdana", Font.PLAIN, 12));
 
 		this.comboPriority3 = new JComboBox(testCaseNames);
 		this.comboPriority3.setFont(new Font("Verdana", Font.PLAIN, 12));
+		comboPriority3.setSelectedIndex(-1);
 		
 		JLabel lblDBPassword = new JLabel("Priority 4");
 		lblDBPassword.setFont(new Font("Verdana", Font.PLAIN, 12));
 
 		this.comboPriority4 = new JComboBox(testCaseNames);
 		this.comboPriority4.setFont(new Font("Verdana", Font.PLAIN, 12));
+		comboPriority4.setSelectedIndex(-1);
 		
 		GroupLayout gl_contentPanel = new GroupLayout(this.contentPanel);
 
@@ -178,10 +192,14 @@ public class NewEdgeEventInstancePriorityDialog extends JDialog {
 			this.graphProject = new GraphProjectVO();
 		}
 		
-		this.eventInstancesToUse.add((String) this.comboPriority1.getSelectedItem());
-		this.eventInstancesToUse.add((String) this.comboPriority2.getSelectedItem());
-		this.eventInstancesToUse.add((String) this.comboPriority3.getSelectedItem());
-		this.eventInstancesToUse.add((String) this.comboPriority4.getSelectedItem());		
+		if (this.comboPriority1.getSelectedIndex() != -1)
+			this.eventInstancesToUse.add((String) this.comboPriority1.getSelectedItem());
+		if (this.comboPriority2.getSelectedIndex() != -1)
+			this.eventInstancesToUse.add((String) this.comboPriority2.getSelectedItem());
+		if (this.comboPriority3.getSelectedIndex() != -1)
+			this.eventInstancesToUse.add((String) this.comboPriority3.getSelectedItem());
+		if (this.comboPriority4.getSelectedIndex() != -1)
+			this.eventInstancesToUse.add((String) this.comboPriority4.getSelectedItem());		
 				
 		this.dispose();
 	}

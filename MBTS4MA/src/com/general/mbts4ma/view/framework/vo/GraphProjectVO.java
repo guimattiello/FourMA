@@ -43,8 +43,9 @@ public class GraphProjectVO extends AbstractVO implements Serializable {
 	private String dbpassword;
 	
 	private ArrayList<String> verticesCreatedByUser;
-	private Map<String,ArrayList<String>> edgesCreatedByUser;
-	private ArrayList<String> importedTestCaseNames;
+	private Map<String, ArrayList<String>> edgesCreatedByUser;
+	private ArrayList<String> importedTestCaseNames;	
+	private Map<String, ArrayList<String>> eventInstanceToVertexRestrictions;
 	
 	/** END WEB PROJECT VARIABLES **/
 	
@@ -188,6 +189,14 @@ public class GraphProjectVO extends AbstractVO implements Serializable {
 		}
 		
 		return this.importedTestCaseNames;
+	}
+	
+	public Map<String, ArrayList<String>> getEventInstanceToVertexRestrictions(){
+		if (this.eventInstanceToVertexRestrictions == null) {
+			this.eventInstanceToVertexRestrictions = new LinkedHashMap<String,ArrayList<String>>();
+		}
+		
+		return this.eventInstanceToVertexRestrictions;
 	}
 	
 	public ArrayList<String> getDistinctGroupNameOfEventInstances() {

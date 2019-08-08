@@ -117,7 +117,7 @@ public class ParametersDialog extends JDialog {
 					}
 					
 				} else {				
-					CtMethod<?> method = SpoonUtil.getMethodBySignature(SpoonUtil.getSignatureFromMethodTemplate(methodSignature), this.graphProject.getLauncher().getFactory().Class().getAll());
+					CtMethod<?> method = SpoonUtil.getMethodBySignature(SpoonUtil.getSignatureFromMethodTemplate(methodSignature), this.graphProject.getLauncher().getFactory().Class().getAll(), null);
 									
 					for (CtParameter<?> param : method.getParameters()) {
 						header.add(param.getType() + " " + param.getSimpleName() + " : " + param.getType());

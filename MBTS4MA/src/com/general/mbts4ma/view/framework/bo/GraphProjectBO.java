@@ -653,6 +653,14 @@ public class GraphProjectBO implements Serializable {
 				}
 			}
 			
+			ArrayList<String> restrictions = graphProject.getEventInstanceToVertexRestrictions().get(eventInstanceGroup);
+			
+			if (restrictions != null) {
+				for (String restriction : restrictions) {
+					verticesId.add(restriction);
+				}
+			}
+			
 			ArrayList<Object> path = new ArrayList<Object>();			
 			
 			mxCell vertexA = (mxCell) ((mxGraphModel)graph.getModel()).getCell(MainView.ID_START_VERTEX);
@@ -743,7 +751,7 @@ public class GraphProjectBO implements Serializable {
 			//Update remaining edges to be covered
 			ArrayList<String> removeFromEdgesRemaining = new ArrayList<String>();
 			for (Map.Entry<String, ArrayList<String>> ei : newEdgesCreatedByUser.entrySet()) {
-			    String key = entry.getKey();			    
+			    String key = ei.getKey();			    
 				for (Object element : path) {
 					mxCell e = (mxCell) element;
 					if (e.getId().equals(key))
@@ -790,7 +798,7 @@ public class GraphProjectBO implements Serializable {
 						}
 					}
 				}
-				String statementStr = getStatementFromVertex(graphProject, vertex.getId(), param);
+				String statementStr = getStatementFromVertex(graphProject, vertex.getId(), param, ctBlock.toString());
 				if (statementStr != null) {
 					CtStatement statement = graphProject.getLauncher().getFactory().createCodeSnippetStatement(statementStr);
 					ctBlock.addStatement(statement);
@@ -875,7 +883,7 @@ public class GraphProjectBO implements Serializable {
 							}
 													
 							//Cria o statement para incluir no método
-							String statementStr = getStatementFromVertex(graphProject, vertex.getId(), ei);
+							String statementStr = getStatementFromVertex(graphProject, vertex.getId(), ei, ctBlock.toString());
 							if (statementStr != null) {
 								CtStatement statement = graphProject.getLauncher().getFactory().createCodeSnippetStatement(statementStr);
 								ctBlock.addStatement(statement);
@@ -899,7 +907,7 @@ public class GraphProjectBO implements Serializable {
 				
 				//Apenas transforma a CES em um método e adiciona ao MethodsToCreate
 				for (Vertex vertex : ces) {
-					String statementStr = getStatementFromVertex(graphProject, vertex.getId(), null);
+					String statementStr = getStatementFromVertex(graphProject, vertex.getId(), null, ctBlock.toString());
 					if (statementStr != null) {
 						CtStatement statement = graphProject.getLauncher().getFactory().createCodeSnippetStatement(statementStr);
 						ctBlock.addStatement(statement);
@@ -913,7 +921,7 @@ public class GraphProjectBO implements Serializable {
 		return methodsToCreate;
 	}
 	
-	private static synchronized String getStatementFromVertex(GraphProjectVO graphProject, String vertexId, EventInstance ei) {
+	private static synchronized String getStatementFromVertex(GraphProjectVO graphProject, String vertexId, EventInstance ei, String blockUntilNow) {
 		
 		String vertexMethod = graphProject.getMethodTemplatesByVertices().get(vertexId);
 		
@@ -931,7 +939,7 @@ public class GraphProjectBO implements Serializable {
 		
 		CtConstructor<?> constructor = null;
 		if (ctMethod == null)
-			constructor = SpoonUtil.getCtConstructorFromMethodSignatureAndClassName(methodSignature, className, graphProject.getLauncher());
+			constructor = SpoonUtil.getCtConstructorFromMethodSignatureAndClassName(methodSignature, className.toLowerCase(), graphProject.getLauncher());
 		
 		String statement = "";
 		List<CtParameter<?>> params = null;
@@ -947,7 +955,11 @@ public class GraphProjectBO implements Serializable {
 			}
 			
 		} else if (ctMethod != null) {
-			statement = ctMethod.getSimpleName() + "(";
+			String simpleMethodReturnClassName = ctMethod.getType().toString().lastIndexOf(".") != -1 ? ctMethod.getType().toString().substring(ctMethod.getType().toString().lastIndexOf(".") + 1).trim() : ctMethod.getType().toString();  
+			String simpleMethodTargetClassName = className.lastIndexOf(".") != -1 ? className.substring(className.lastIndexOf(".") + 1).trim() : className;
+			
+			statement = (!blockUntilNow.toLowerCase().contains(simpleMethodReturnClassName.toLowerCase() + " " + simpleMethodReturnClassName.toLowerCase()) ? simpleMethodReturnClassName + " " : "") + simpleMethodReturnClassName.toLowerCase() + " = " + simpleMethodTargetClassName.toLowerCase() + "."; 
+			statement += ctMethod.getSimpleName() + "(";
 			params = ctMethod.getParameters();
 		} else if (constructor != null) {
 			String getParamsStr = null;	

@@ -5,6 +5,7 @@ import java.io.File;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Iterator;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 
@@ -59,6 +60,10 @@ public class CustomGraphActions {
 
 	public static Action getSelectAllVerticesAction() {
 		return selectAllVerticesAction;
+	}
+	
+	public static Action getNewEventInstanceRestriction(GraphProjectVO graphProject) {
+		return new NewEventInstanceRestrictionAction("neweventinstancerestriction", graphProject);
 	}
 	
 	public static Action getParametersAction(GraphProjectVO graphProject) {
@@ -118,6 +123,42 @@ public class CustomGraphActions {
 							CtMethod<?> newMethod = (CtMethod<?>)l.getMethods().iterator().next();
 							this.graphProject.getLauncher().getFactory().Class().get(this.pageObject.getParsedClass().getQualifiedName()).addMethod(newMethod);
 							this.graphProject.pageObjectsRefresh();
+						}
+					}
+				}
+			}
+		}
+	}
+	
+	public static class NewEventInstanceRestrictionAction extends AbstractAction {
+
+		private GraphProjectVO graphProject = null;		
+		
+		public NewEventInstanceRestrictionAction(String name, GraphProjectVO graphProject) {
+			super(name);
+			this.graphProject = graphProject;			
+		}
+
+		@Override
+		public void actionPerformed(ActionEvent e) {
+			mxGraph graph = getGraph(e);
+
+			if (graph != null) {
+				Object[] selectedCells = graph.getSelectionCells();
+
+				if (selectedCells != null && selectedCells.length > 0) {
+					for (Object selectedCell : selectedCells) {
+						mxCell vertice = (mxCell) selectedCell;
+						String eventInstanceName = JOptionPane.showInputDialog("Enter the event instance name");//og(null, "Enter the SIGNATURE of the new abstract method", "Attention", JOptionPane.INFORMATION_MESSAGE);						
+						
+						Map<String,ArrayList<String>> eventinstancerestriction = graphProject.getEventInstanceToVertexRestrictions();
+						
+						if (eventinstancerestriction.get(eventInstanceName) != null && !eventinstancerestriction.get(eventInstanceName).contains(vertice.getId()))	{
+							eventinstancerestriction.get(eventInstanceName).add(vertice.getId());
+						} else {
+							ArrayList<String> cellsId = new ArrayList<String>();
+							cellsId.add(vertice.getId());
+							eventinstancerestriction.put(eventInstanceName, cellsId);
 						}
 					}
 				}
