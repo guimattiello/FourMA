@@ -1071,6 +1071,10 @@ public class MainView extends JFrame {
 
 	private void saveProject() {
 		String fileSavingPath = null;
+		
+		this.graphProject.setLauncher(null);
+		this.graphProject.setTestClasses(null);
+		this.graphProject.setPageObjects(null);
 
 		if (this.graphProject.hasFileSavingPath()) {
 			fileSavingPath = this.graphProject.getFileSavingPath();

@@ -179,8 +179,14 @@ public class GraphProjectVO extends AbstractVO implements Serializable {
 	}
 	
 	public void removeEdgesCreatedByUser(String id){
-		if (!this.edgesCreatedByUser.isEmpty()) {
+		if (this.edgesCreatedByUser != null && !this.edgesCreatedByUser.isEmpty() && this.edgesCreatedByUser.get(id) != null) {
 			this.edgesCreatedByUser.remove(id);
+		}
+	}
+	
+	public void removeEdgesToVertexRestriction(String id){
+		if (this.edgesToVertexRestrictions != null && !this.edgesToVertexRestrictions.isEmpty() && this.edgesToVertexRestrictions.get(id) != null) {
+			this.edgesToVertexRestrictions.remove(id);
 		}
 	}
 	

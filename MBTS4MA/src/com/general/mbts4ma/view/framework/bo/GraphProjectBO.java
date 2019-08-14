@@ -719,7 +719,7 @@ public class GraphProjectBO implements Serializable {
 						
 		}
 		
-		while (!newEdgesCreatedByUser.isEmpty()) {
+		/*while (!newEdgesCreatedByUser.isEmpty()) {
 			
 			Map.Entry<String,ArrayList<String>> entry = newEdgesCreatedByUser.entrySet().iterator().next();
 		 	String newEdgeId = entry.getKey();
@@ -762,7 +762,104 @@ public class GraphProjectBO implements Serializable {
 				newEdgesCreatedByUser.remove(edge);
 			}
 			
+		}*/
+		
+		// ---------- Paths for new edges with restrictions
+		
+		while (!newEdgesCreatedByUser.isEmpty()) {
+		
+			Map.Entry<String,ArrayList<String>> entry = newEdgesCreatedByUser.entrySet().iterator().next();
+		 	String newEdgeId = entry.getKey();
+			
+			mxCell newEdge = (mxCell) ((mxGraphModel)graph.getModel()).getCell(newEdgeId);
+			
+			mxCell sourceVertex = (mxCell)newEdge.getSource();
+			mxCell terminalVertex = (mxCell)newEdge.getTerminal(false);
+			
+			ArrayList<String> verticesId = new ArrayList<String>();
+			
+			verticesId.add(sourceVertex.getId());
+			verticesId.add(terminalVertex.getId());
+			
+			ArrayList<String> restrictions = graphProject.getEdgesToVertexRestrictions().get(newEdgeId);
+			
+			if (restrictions != null) {
+				for (String restriction : restrictions) {
+					verticesId.add(restriction);
+				}
+			}
+			
+			ArrayList<Object> path = new ArrayList<Object>();			
+			
+			mxCell vertexA = (mxCell) ((mxGraphModel)graph.getModel()).getCell(MainView.ID_START_VERTEX);
+			
+			path.add(vertexA);
+			
+			verticesId.add(MainView.ID_END_VERTEX);
+					
+			while (!verticesId.isEmpty()) {
+				
+				int pathLength = -1;
+				String idShorterPath = null;
+				Object[] nextPath = null;
+				
+				for (String id : verticesId) {
+					
+					mxCell aux = (mxCell) ((mxGraphModel)graph.getModel()).getCell(id);
+					
+					Object[] elements = mga.getShortestPath(graph, vertexA, aux, mcf, 1000, true);
+					
+					if (pathLength == -1 || elements.length < pathLength) {
+						pathLength = elements.length;
+						idShorterPath = id;
+						nextPath = elements.clone();
+					}
+					
+				}
+				
+				verticesId.remove(idShorterPath);
+				
+				for (Object element : nextPath) {
+					if (nextPath[0] != element)
+						path.add(element);
+				}
+				
+				vertexA = (mxCell) ((mxGraphModel)graph.getModel()).getCell(idShorterPath);
+				
+			}
+
+			methodsToCreate.add(createMethodFromPath(graphProject, path, graphProject.getEdgesCreatedByUser().get(newEdgeId)));
+			
+			//Update remaining edges to be covered
+			ArrayList<String> removeFromEdgesRemaining = new ArrayList<String>();
+			for (Map.Entry<String, ArrayList<String>> entry2 : newEdgesCreatedByUser.entrySet()) {
+			    String key = entry2.getKey();
+				for (Object element : path) {
+					mxCell e = (mxCell) element;
+					if (e.getId().equals(key)) {
+						ArrayList<String> verifyRestrictions = graphProject.getEdgesToVertexRestrictions().get(key);
+						if (verifyRestrictions != null && verifyRestrictions.size() > 0) {
+							boolean delete = true;
+							for (String rest : verifyRestrictions) {
+								Object vertex = ((mxGraphModel)graph.getModel()).getCell(rest);
+								if (!path.contains(vertex))
+									delete = false;
+							}
+							if (delete)
+								removeFromEdgesRemaining.add(key);
+						} else {
+							removeFromEdgesRemaining.add(key);
+						}
+						
+					}
+				}
+			}
+			for (String edge : removeFromEdgesRemaining) {
+				newEdgesCreatedByUser.remove(edge);
+			}
+				
 		}
+		// ----------
 				
 		System.out.println(methodsToCreate.toString());
 		
