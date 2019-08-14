@@ -418,7 +418,7 @@ public class GraphProjectVO extends AbstractVO implements Serializable {
 				
 				if (po.getParsedClass().getQualifiedName().equals(clazz.getQualifiedName())) {
 					
-					this.pageObjects.get(this.pageObjects.indexOf(po)).setParsedClass((CtClass<?>)clazz);
+					this.pageObjects.get(this.pageObjects.indexOf(po)).setContent(clazz.toString());
 					
 				}
 			}

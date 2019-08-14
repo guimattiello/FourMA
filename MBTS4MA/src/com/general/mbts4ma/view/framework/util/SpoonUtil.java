@@ -99,4 +99,9 @@ public class SpoonUtil {
 		return methodTemplate;
 	}
 	
+	public static CtClass getCtClassFromClassContent(String classContent) {
+		
+		return Launcher.parseClass(classContent);
+	}
+	
 }

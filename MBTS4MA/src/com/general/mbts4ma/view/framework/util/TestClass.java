@@ -13,8 +13,6 @@ public class TestClass {
 	private String className;
 	private String path;
 	private String content;
-	private CtClass parsedClass;	
-	private List<List<CtStatement>> statementsByMethod;
 	
 	public TestClass() {
 		
@@ -23,9 +21,7 @@ public class TestClass {
 	public TestClass(String className, String path) {
 		this.className = className;
 		this.path = path;
-		this.content = this.getContentByPath(path);
-		
-		statementsByMethod = new ArrayList<List<CtStatement>>();
+		this.content = this.getContentByPath(path);		
 	}
 	
 	public String getClassName(){
@@ -39,14 +35,9 @@ public class TestClass {
 	public String getContent(){
 		return this.content;
 	}
-	
-	public CtClass getParsedClass(){
-		return this.parsedClass;
-	}
-	
+		
 	public String getContentByPath(String path) {
 		String fileContent = FileUtil.readFile(new File(path));
-		this.parsedClass = Launcher.parseClass(fileContent);
 		
 		return fileContent;
 	}
@@ -55,10 +46,6 @@ public class TestClass {
 		String fileContent = FileUtil.readFile(new File(this.path));
 		
 		this.content = fileContent;
-	}
-	
-	public void addMethodWithStatements(ArrayList<CtStatement> method) {
-		this.statementsByMethod.add(method);
 	}
 	
 }

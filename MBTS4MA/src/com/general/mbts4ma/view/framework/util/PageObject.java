@@ -12,13 +12,15 @@ public class PageObject {
 	private String className;
 	private String path;
 	private String content;
-	private CtClass parsedClass;
-	
-	
-	
-	public PageObject(String className, CtClass parsedClass) {
+
+	/*public PageObject(String className, CtClass parsedClass) {
 		this.className = className;
-		this.parsedClass = parsedClass;
+		this.parsedClass = parsedClass;		
+	}*/
+	
+	public PageObject(String className, String content) {
+		this.className = className;
+		this.content = content;
 		//this.content = this.getContentByPath(path);
 	}
 	
@@ -28,6 +30,10 @@ public class PageObject {
 	
 	public String getPath(){
 		return this.path;
+	}
+	
+	public void setContent(String content){
+		this.content = content;
 	}
 	
 	public String getContent(){
@@ -46,17 +52,19 @@ public class PageObject {
 		
 		this.content = fileContent;
 	}
-	
-	public void setParsedClass(CtClass ctClass) {
-		this.parsedClass = ctClass;
-	}
-	
+		
 	public CtClass getParsedClass() {
-		return this.parsedClass;
+		
+		return SpoonUtil.getCtClassFromClassContent(this.content);
 	}
 	
 	public void createNewAbstractMethod(CtMethod method) {
-		this.getParsedClass().addMethod(method);
+		
+		CtClass clazz = this.getParsedClass();
+		
+		clazz.addMethod(method);
+		
+		this.content = clazz.toString();
 	}
 	
 }

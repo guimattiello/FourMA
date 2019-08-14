@@ -1058,6 +1058,16 @@ public class MainView extends JFrame {
 			this.initGraph();
 
 			try {
+				if (this.graphProject.getIsWebProject()) {
+					Launcher launcher = new Launcher();
+					launcher.getEnvironment().setNoClasspath(true);
+					launcher.getEnvironment().setAutoImports(true);
+					launcher.addInputResource(this.graphProject.getWebProjectDirTestPath());			
+					launcher.buildModel();
+					
+					this.graphProject.setLauncher(launcher);
+				}
+				
 				GraphProjectBO.loadGraphFromXML(this.graph, this.graphProject.getGraphXML());
 
 				JOptionPane.showMessageDialog(null, "Project successfully opened.", "Attention", JOptionPane.INFORMATION_MESSAGE);
@@ -1073,8 +1083,8 @@ public class MainView extends JFrame {
 		String fileSavingPath = null;
 		
 		this.graphProject.setLauncher(null);
-		this.graphProject.setTestClasses(null);
-		this.graphProject.setPageObjects(null);
+		/*this.graphProject.setTestClasses(null);
+		this.graphProject.setPageObjects(null);*/
 
 		if (this.graphProject.hasFileSavingPath()) {
 			fileSavingPath = this.graphProject.getFileSavingPath();
