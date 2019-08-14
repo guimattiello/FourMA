@@ -13,6 +13,8 @@ import javax.swing.AbstractAction;
 import javax.swing.Action;
 import javax.swing.JOptionPane;
 
+import org.jgraph.graph.Edge;
+
 import com.general.mbts4ma.EventInstance;
 import com.general.mbts4ma.view.MainView;
 import com.general.mbts4ma.view.dialog.EventPropertiesDialog;
@@ -64,6 +66,10 @@ public class CustomGraphActions {
 	
 	public static Action getNewEventInstanceRestriction(GraphProjectVO graphProject) {
 		return new NewEventInstanceRestrictionAction("neweventinstancerestriction", graphProject);
+	}
+	
+	public static Action getNewEdgeRestriction(GraphProjectVO graphProject) {
+		return new NewEdgeRestrictionAction("neweventinstancerestriction", graphProject);
 	}
 	
 	public static Action getParametersAction(GraphProjectVO graphProject) {
@@ -161,6 +167,64 @@ public class CustomGraphActions {
 							eventinstancerestriction.put(eventInstanceName, cellsId);
 						}
 					}
+				}
+			}
+		}
+	}
+	
+	public static class NewEdgeRestrictionAction extends AbstractAction {
+
+		private GraphProjectVO graphProject = null;		
+		
+		public NewEdgeRestrictionAction(String name, GraphProjectVO graphProject) {
+			super(name);
+			this.graphProject = graphProject;			
+		}
+
+		@Override
+		public void actionPerformed(ActionEvent e) {
+			mxGraph graph = getGraph(e);
+
+			if (graph != null) {
+				Object[] selectedCells = graph.getSelectionCells();
+
+				if (selectedCells != null && selectedCells.length == 2) {
+					mxCell cell1 = (mxCell) selectedCells[0];
+					mxCell cell2 = (mxCell) selectedCells[1];
+
+					Map<String,ArrayList<String>> edgerestriction = graphProject.getEdgesToVertexRestrictions();
+					
+					if (cell1.isEdge() && cell2.isVertex()) {
+						
+						if (edgerestriction.get(cell1.getId()) != null && !edgerestriction.get(cell1.getId()).contains(cell2.getId()))	{
+							edgerestriction.get(cell1.getId()).add(cell2.getId());
+						} else {
+							ArrayList<String> nodesId = new ArrayList<String>();
+							nodesId.add(cell2.getId());
+							edgerestriction.put(cell1.getId(), nodesId);
+						}
+						
+						JOptionPane.showMessageDialog(null, "Restriction created succesfully!");
+						
+					} else if (cell2.isEdge() && cell1.isVertex()){
+						
+						if (edgerestriction.get(cell2.getId()) != null && !edgerestriction.get(cell2.getId()).contains(cell1.getId()))	{
+							edgerestriction.get(cell2.getId()).add(cell1.getId());
+						} else {
+							ArrayList<String> nodesId = new ArrayList<String>();
+							nodesId.add(cell1.getId());
+							edgerestriction.put(cell2.getId(), nodesId);
+						}
+						
+						JOptionPane.showMessageDialog(null, "Restriction created succesfully!");
+						
+					} else {
+						JOptionPane.showMessageDialog(null, "Select at least one node and one edge!");
+					}
+					
+					
+				} else {
+					JOptionPane.showMessageDialog(null, "Select at least one node and one edge!");
 				}
 			}
 		}

@@ -537,6 +537,7 @@ public class MainView extends JFrame {
 							//ArrayList<String> pageObjectsPath = new ArrayList(Arrays.asList(graphProject.getWebProjectPageObject().split(",")));
 							
 							popup.add(MainView.this.bind("New Event Instance Restriction Here", CustomGraphActions.getNewEventInstanceRestriction(MainView.this.graphProject)));
+							popup.add(MainView.this.bind("New Edge Restriction", CustomGraphActions.getNewEdgeRestriction(MainView.this.graphProject)));
 
 							popup.addSeparator();
 							
