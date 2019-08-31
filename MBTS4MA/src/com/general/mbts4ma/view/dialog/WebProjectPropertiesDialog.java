@@ -548,7 +548,7 @@ public class WebProjectPropertiesDialog extends JDialog {
 		for (CtType<?> clazz : classesList) {
 			if (pageObjectsName.contains(clazz.getSimpleName())) {
 				
-				PageObject newPageObject = new PageObject(clazz.getSimpleName(), clazz.toString());
+				PageObject newPageObject = new PageObject(clazz.getSimpleName(), clazz.toString(), clazz.getQualifiedName(), false);
 				
 				pageObjects.add(newPageObject);
 				

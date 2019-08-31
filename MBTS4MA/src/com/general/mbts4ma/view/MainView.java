@@ -580,6 +580,9 @@ public class MainView extends JFrame {
 								popup.add(pageObjectsTemplatesMenu);
 								
 							}
+							
+							popup.add(MainView.this.bind("-- Create new PageObject class --", CustomGraphActions.getCreateNewPageObjectClass(MainView.this.graphProject)));
+						
 						}
 
 						popup.show(MainView.this.graphComponent, e.getX(), e.getY());
@@ -735,7 +738,7 @@ public class MainView extends JFrame {
 		return false;
 	}
 	
-	private CtMethod getMethodBySignature(String signature, List<CtType<?>> classesList, String className) {
+	/*private CtMethod getMethodBySignature2(String signature, List<CtType<?>> classesList, String className) {
 		
 		for (CtType<?> type : classesList) {
 			Set<CtMethod<?>> ctMethods = type.getMethods();
@@ -748,7 +751,7 @@ public class MainView extends JFrame {
 		
 		return null;
 		
-	}
+	}*/
 	
 	
 	private void newWebAppProject() {
@@ -766,6 +769,8 @@ public class MainView extends JFrame {
 			this.initGraph();
 			
 			this.createBasicGraph();
+		} else {
+			return;
 		}
 		
 		/* PUXA TODOS OS ARQUIVOS DE UMA PASTA E CRIA UM MODELO SPOON (UTIL PARA OS PAGE OBJECTS)*/
@@ -786,7 +791,7 @@ public class MainView extends JFrame {
 		*/
 
 		//final CtModelImpl model = (CtModelImpl) launcher.getModel();
-		List<CtType<?>> classesList = this.graphProject.getLauncher().getFactory().Class().getAll();		
+		List<CtType<?>> classesList = this.graphProject.getLauncher().getFactory().Class().getAll();
 		
 		//this.graphProject.setLauncher(launcher);
 		
@@ -865,7 +870,7 @@ public class MainView extends JFrame {
 		                    			int countNameParam = 0;
 		                    			
 		                    			for (CtExpression<?> param : args) {
-		                    				CtMethod<?> methodParam = getMethodBySignature(ctInvocation.getExecutable().getSignature(), classesList, ctInvocation.getExecutable().getType().toString());
+		                    				CtMethod<?> methodParam = SpoonUtil.getMethodBySignature(ctInvocation.getExecutable().getSignature(), classesList, ctInvocation.getExecutable().getType().toString(), graphProject.getPageObjects());
 		                    				Parameter p = new Parameter(param.getType().getSimpleName(), param.toString(), (methodParam != null ? methodParam.getParameters().get(countNameParam).toString() : "nome do metodo"));
 											parameters.add(p);
 											countNameParam++;
@@ -894,7 +899,7 @@ public class MainView extends JFrame {
 		                    			
 		                    			for (CtExpression<?> param : args) {
 		                    				countNameParam++;
-		                    				CtConstructor<?> constructor = SpoonUtil.getCtConstructorFromMethodSignatureAndClassName(ctConstructorCall.getExecutable().getSignature(), ctConstructorCall.getExecutable().getDeclaringType().getSimpleName(), this.graphProject.getLauncher());
+		                    				CtConstructor<?> constructor = SpoonUtil.getCtConstructorFromMethodSignatureAndClassName(ctConstructorCall.getExecutable().getSignature(), ctConstructorCall.getExecutable().getDeclaringType().getSimpleName(), this.graphProject.getLauncher(), this.graphProject.getPageObjects());
 		                    				//CtMethod methodParam = getMethodBySignature(ctConstructorCall.getExecutable().getSignature(), classesList);
 		                    				Parameter p = new Parameter(param.getType().getSimpleName(), param.toString(), (constructor != null ? constructor.getParameters().get(0).toString() : "nome do metodo"));
 											parameters.add(p);
@@ -1082,7 +1087,13 @@ public class MainView extends JFrame {
 	private void saveProject() {
 		String fileSavingPath = null;
 		
+		Launcher l = this.graphProject.getLauncher();
+		
 		this.graphProject.setLauncher(null);
+		
+		for (PageObject pageObject : this.graphProject.getPageObjects()) {
+			pageObject.setParsedClass(null);
+		}
 		/*this.graphProject.setTestClasses(null);
 		this.graphProject.setPageObjects(null);*/
 
@@ -1110,6 +1121,7 @@ public class MainView extends JFrame {
 
 			if (GraphProjectBO.save(fileSavingPath, this.graphProject)) {
 				JOptionPane.showMessageDialog(null, "Project successfully saved.", "Attention", JOptionPane.INFORMATION_MESSAGE);
+				this.graphProject.setLauncher(l);
 			}
 		}
 
@@ -1130,9 +1142,16 @@ public class MainView extends JFrame {
 
 	private void displayProjectProperties() {
 		if (this.graphProject != null) {
-			ProjectPropertiesDialog dialog = new ProjectPropertiesDialog(this.graphProject);
-
-			dialog.setVisible(true);
+			
+			if (this.graphProject.getIsWebProject()) {
+				WebProjectPropertiesDialog dialog = new WebProjectPropertiesDialog(this.graphProject);
+				
+				dialog.setVisible(true);
+			} else {
+				ProjectPropertiesDialog dialog = new ProjectPropertiesDialog(this.graphProject);
+	
+				dialog.setVisible(true);
+			}
 		}
 	}
 
@@ -1472,7 +1491,7 @@ public class MainView extends JFrame {
 		markedEdge.put(mxConstants.STYLE_FONTFAMILY, "Verdana");
 		markedEdge.put(mxConstants.STYLE_FONTSIZE, "10");
 		markedEdge.put(mxConstants.STYLE_VERTICAL_ALIGN, mxConstants.ALIGN_MIDDLE);
-		markedEdge.put(mxConstants.STYLE_ALIGN, mxConstants.ALIGN_CENTER);
+		markedEdge.put(mxConstants.STYLE_ALIGN, mxConstants.ALIGN_CENTER);		
 
 		Map<String, Object> generatedEdge = new HashMap<>(edge);
 		generatedEdge.put(mxConstants.STYLE_ROUNDED, true);
@@ -1490,7 +1509,7 @@ public class MainView extends JFrame {
 		generatedEdge.put(mxConstants.STYLE_EDITABLE, false);
 		generatedEdge.put(mxConstants.STYLE_DELETABLE, false);
 		generatedEdge.put(mxConstants.STYLE_MOVABLE, false);
-
+				
 		Map<String, Object> startVertex = new HashMap<String, Object>();
 		startVertex.put(mxConstants.STYLE_SHAPE, mxConstants.SHAPE_ELLIPSE);
 		startVertex.put(mxConstants.STYLE_FILLCOLOR, "#88FFAA");
@@ -1586,7 +1605,7 @@ public class MainView extends JFrame {
 		webGeneratedAssertEventVertex.put(mxConstants.STYLE_EDGE, mxConstants.EDGESTYLE_ENTITY_RELATION);
 		webGeneratedAssertEventVertex.put(mxConstants.STYLE_EDITABLE, false);
 		webGeneratedAssertEventVertex.put(mxConstants.STYLE_MOVABLE, false);
-		webGeneratedAssertEventVertex.put(mxConstants.STYLE_DELETABLE, false);
+		webGeneratedAssertEventVertex.put(mxConstants.STYLE_DELETABLE, false);		
 		
 		stylesheet.setDefaultEdgeStyle(edge);
 

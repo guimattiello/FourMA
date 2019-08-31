@@ -10,18 +10,22 @@ import spoon.reflect.declaration.CtType;
 public class PageObject {
 
 	private String className;
+	private String qualifiedClassName;
 	private String path;
-	private String content;
+	private String content;	
+	private CtClass parsedClass;
+	private boolean createdByUser;
 
 	/*public PageObject(String className, CtClass parsedClass) {
 		this.className = className;
 		this.parsedClass = parsedClass;		
 	}*/
 	
-	public PageObject(String className, String content) {
+	public PageObject(String className, String content, String qualifiedClassName, boolean createdByUser) {
 		this.className = className;
+		this.qualifiedClassName = qualifiedClassName;
 		this.content = content;
-		//this.content = this.getContentByPath(path);
+		this.createdByUser = createdByUser;
 	}
 	
 	public String getClassName(){
@@ -34,10 +38,20 @@ public class PageObject {
 	
 	public void setContent(String content){
 		this.content = content;
+		CtClass clazz = SpoonUtil.getCtClassFromClassContent(this.content);
+		this.parsedClass = clazz;
 	}
 	
 	public String getContent(){
 		return this.content;
+	}
+	
+	public String getQualifiedClassName(){
+		return this.qualifiedClassName;
+	}
+	
+	public boolean getCreatedByUser(){
+		return this.createdByUser;
 	}
 	
 	/*public String getContentByPath(String path) {
@@ -52,10 +66,20 @@ public class PageObject {
 		
 		this.content = fileContent;
 	}
-		
+
 	public CtClass getParsedClass() {
+		if (this.parsedClass == null) {
+			CtClass clazz = SpoonUtil.getCtClassFromClassContent(this.content);
+			this.parsedClass = clazz;
+			return clazz;
+		} else {
+			return this.parsedClass;
+		}
 		
-		return SpoonUtil.getCtClassFromClassContent(this.content);
+	}
+	
+	public void setParsedClass(CtClass clazz) {
+		this.parsedClass = clazz;
 	}
 	
 	public void createNewAbstractMethod(CtMethod method) {

@@ -11,7 +11,7 @@ import spoon.reflect.declaration.CtType;
 
 public class SpoonUtil {
 
-	public static CtMethod<?> getCtMethodFromMethodSignatureAndClassName(String methodSignature, String className, Launcher launcher) {
+	public static CtMethod<?> getCtMethodFromMethodSignatureAndClassName(String methodSignature, String className, Launcher launcher, List<PageObject> pageObjects) {
 		
 		List<CtType<?>> classesList = launcher.getFactory().Class().getAll();
 		
@@ -37,14 +37,22 @@ public class SpoonUtil {
 			
 		}
 		
-		
+		for (PageObject po : pageObjects) {
+			CtClass<?> clazz = po.getParsedClass();
+			Set<CtMethod<?>> ctMethods = clazz.getMethods();
+			for (CtMethod<?> method : ctMethods) { 				
+				if (method.getSignature().equals(methodSignature) && ((className == null) || className.equals(clazz.getSimpleName()))) {
+					return method;
+				}
+			}
+		}
 		
 		
 		return null;
 		
 	}
 	
-	public static CtConstructor<?> getCtConstructorFromMethodSignatureAndClassName(String methodSignature, String className, Launcher launcher) {
+	public static CtConstructor<?> getCtConstructorFromMethodSignatureAndClassName(String methodSignature, String className, Launcher launcher, List<PageObject> pageObjects) {
 		
 		List<CtType<?>> classesList = launcher.getFactory().Class().getAll();
 		
@@ -71,15 +79,38 @@ public class SpoonUtil {
 			}
 		}
 		
+		for (PageObject po : pageObjects) {
+			CtClass<?> clazz = po.getParsedClass();
+			
+			Set<?> constructors = clazz.getConstructors();
+			
+			for (Object ctType : constructors) {
+				CtConstructor<?> constructor = (CtConstructor<?>)ctType;
+				
+				if (constructor.getSignature().equals(methodSignature) || constructor.getSimpleName().equals(methodSignature))
+					return constructor;
+			}
+		}
+		
 		return null;
 	}
 	
-	public static CtMethod<?> getMethodBySignature(String signature, List<CtType<?>> classesList, String className) {
+	public static CtMethod<?> getMethodBySignature(String signature, List<CtType<?>> classesList, String className, List<PageObject> pageObjects) {
 		
 		for (CtType<?> type : classesList) {
 			Set<CtMethod<?>> ctMethods = type.getMethods();
 			for (CtMethod<?> method : ctMethods) { 
-				if (method.getSignature().equals(signature) && (className.equals(type) || (className == null))) {
+				if (method.getSignature().equals(signature) && ((className == null) || className.equals(type.getSimpleName()) || className.equals(type.getQualifiedName()))) {
+					return method;
+				}
+			}
+		}
+
+		for (PageObject po : pageObjects) {
+			CtClass<?> clazz = po.getParsedClass();
+			Set<CtMethod<?>> ctMethods = clazz.getMethods();
+			for (CtMethod<?> method : ctMethods) { 
+				if (method.getSignature().equals(signature) && ((className == null) || className.equals(clazz))) {
 					return method;
 				}
 			}

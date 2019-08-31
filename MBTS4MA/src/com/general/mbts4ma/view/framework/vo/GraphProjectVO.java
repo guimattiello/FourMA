@@ -400,7 +400,7 @@ public class GraphProjectVO extends AbstractVO implements Serializable {
 
 		return System.getProperty("user.home");
 	}
-
+	
 	public boolean hasFileSavingPath() {
 		return this.fileSavingPath != null && !"".equalsIgnoreCase(this.fileSavingPath);
 	}
@@ -411,17 +411,23 @@ public class GraphProjectVO extends AbstractVO implements Serializable {
 	
 	public void pageObjectsRefresh () {
 		
-		List<CtType<?>> classesList = this.getLauncher().getFactory().Class().getAll();
+		//List<CtType<?>> classesList = this.getLauncher().getFactory().Class().getAll();
 		for (PageObject po : this.pageObjects) {
 			
-			for (CtType<?> clazz : classesList) {
-				
-				if (po.getParsedClass().getQualifiedName().equals(clazz.getQualifiedName())) {
+			/*if (!po.getCreatedByUser()) {
+				for (CtType<?> clazz : classesList) {
 					
-					this.pageObjects.get(this.pageObjects.indexOf(po)).setContent(clazz.toString());
-					
+					if (po.getQualifiedClassName().equals(clazz.getQualifiedName())) {
+						
+						this.pageObjects.get(this.pageObjects.indexOf(po)).setContent(clazz.toString());
+						
+					}
 				}
-			}
+			} else {*/
+				if (po.getParsedClass() != null && !po.getParsedClass().equals("")) {
+					po.setContent(po.getParsedClass().toString());
+				}
+			//}
 			
 		}
 	}

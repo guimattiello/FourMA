@@ -12,6 +12,7 @@ import java.util.Map;
 import javax.swing.AbstractAction;
 import javax.swing.Action;
 import javax.swing.JOptionPane;
+import javax.swing.table.DefaultTableModel;
 
 import org.jgraph.graph.Edge;
 
@@ -31,6 +32,7 @@ import com.mxgraph.view.mxGraph;
 import spoon.Launcher;
 import spoon.reflect.declaration.CtClass;
 import spoon.reflect.declaration.CtMethod;
+import spoon.reflect.declaration.CtType;
 
 public class CustomGraphActions {
 
@@ -95,7 +97,11 @@ public class CustomGraphActions {
 	public static Action getCreateNewAbstractMethod(GraphProjectVO graphProject, PageObject pageObject) {
 		return new CreateNewAbstractMethod("createnewabstractmethod", graphProject, pageObject);
 	}
-
+	
+	public static Action getCreateNewPageObjectClass(GraphProjectVO graphProject) {
+		return new CreateNewPageObjectClass("createnewpageobjectclass", graphProject);
+	}
+	
 	static final Action selectAllAction = new SelectAllAction("selectall");
 
 	public static Action getSelectAllAction() {
@@ -124,11 +130,45 @@ public class CustomGraphActions {
 					if (!hasStartOrEndEdges(selectedCells)) {
 						String methodName = JOptionPane.showInputDialog("Enter the SIGNATURE of the new abstract method", "public LoginPage setPassword (String password)");//og(null, "Enter the SIGNATURE of the new abstract method", "Attention", JOptionPane.INFORMATION_MESSAGE);						
 						
-						if (!methodName.equals("")) {
+						if (methodName != null && !methodName.equals("")) {
 							CtClass<?> l = Launcher.parseClass("class A { @TODO\n" + methodName + "{throw new RuntimeException(\"This method need to be implemented!\");}}");
 							CtMethod<?> newMethod = (CtMethod<?>)l.getMethods().iterator().next();
-							this.graphProject.getLauncher().getFactory().Class().get(this.pageObject.getParsedClass().getQualifiedName()).addMethod(newMethod);
-							this.graphProject.pageObjectsRefresh();
+							//String qualifiedPOName = this.pageObject.getQualifiedClassName();
+							//CtClass<?> pageObject = this.graphProject.getLauncher().getFactory().Class().get(qualifiedPOName);
+							//pageObject.addMethod(newMethod);
+							this.pageObject.getParsedClass().addMethod(newMethod);
+							this.pageObject.setContent(this.pageObject.getParsedClass().toString());
+							//this.graphProject.pageObjectsRefresh();
+						}
+					}
+				}
+			}
+		}
+	}
+	
+	public static class CreateNewPageObjectClass extends AbstractAction {
+
+		private GraphProjectVO graphProject = null;
+		
+		public CreateNewPageObjectClass(String name, GraphProjectVO graphProject) {
+			super(name);
+			this.graphProject = graphProject;
+		}
+
+		@Override
+		public void actionPerformed(ActionEvent e) {
+			mxGraph graph = getGraph(e);
+
+			if (graph != null) {
+				Object[] selectedCells = graph.getSelectionCells();
+
+				if (selectedCells != null && selectedCells.length > 0) {
+					if (!hasStartOrEndEdges(selectedCells)) {
+						String className = JOptionPane.showInputDialog("Enter the NAME of the new class");						
+						
+						if (className != null && !className.equals("")) {
+							PageObject po = new PageObject(className, "class " + className + " { }", className, true);							
+							this.graphProject.getPageObjects().add(po);
 						}
 					}
 				}

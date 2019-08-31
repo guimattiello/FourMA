@@ -116,8 +116,8 @@ public class ParametersDialog extends JDialog {
 						header.add("boolean condition : boolean");
 					}
 					
-				} else {				
-					CtMethod<?> method = SpoonUtil.getMethodBySignature(SpoonUtil.getSignatureFromMethodTemplate(methodSignature), this.graphProject.getLauncher().getFactory().Class().getAll(), null);
+				} else {
+					CtMethod<?> method = SpoonUtil.getMethodBySignature(SpoonUtil.getSignatureFromMethodTemplate(methodSignature), this.graphProject.getLauncher().getFactory().Class().getAll(), null, this.graphProject.getPageObjects());
 									
 					for (CtParameter<?> param : method.getParameters()) {
 						header.add(param.getType() + " " + param.getSimpleName() + " : " + param.getType());

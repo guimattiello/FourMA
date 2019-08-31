@@ -1032,11 +1032,11 @@ public class GraphProjectBO implements Serializable {
 		String methodSignature = split[1];
 		String className = split[0];
 			
-		CtMethod<?> ctMethod = SpoonUtil.getCtMethodFromMethodSignatureAndClassName(methodSignature, className, graphProject.getLauncher());
+		CtMethod<?> ctMethod = SpoonUtil.getCtMethodFromMethodSignatureAndClassName(methodSignature, className, graphProject.getLauncher(), graphProject.getPageObjects());
 		
 		CtConstructor<?> constructor = null;
 		if (ctMethod == null)
-			constructor = SpoonUtil.getCtConstructorFromMethodSignatureAndClassName(methodSignature, className.toLowerCase(), graphProject.getLauncher());
+			constructor = SpoonUtil.getCtConstructorFromMethodSignatureAndClassName(methodSignature, className.toLowerCase(), graphProject.getLauncher(), graphProject.getPageObjects());
 		
 		String statement = "";
 		List<CtParameter<?>> params = null;
