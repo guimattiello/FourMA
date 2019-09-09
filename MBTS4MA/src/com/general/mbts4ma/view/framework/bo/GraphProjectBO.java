@@ -622,6 +622,158 @@ public class GraphProjectBO implements Serializable {
 		return true;
 	}
 	
+	private static synchronized Integer getVertexVisits(Map<String, Integer> visitArr, String id) {
+		
+		if (visitArr.get(id) == null) {
+			visitArr.put(id, 0);
+		}
+		
+		return visitArr.get(id);
+		
+	}
+	
+	private static synchronized void incrementVertexVisits(Map<String, Integer> visitArr, String id) {
+		
+		if (visitArr.get(id) == null) {
+			visitArr.put(id, 1);
+		} else {
+			visitArr.put(id, visitArr.get(id) + 1);
+		}
+	}
+	
+	private static synchronized boolean checkBFS(ArrayList<String> seq, ArrayList<String> mustPassVerticesId, mxCell edge) {
+		
+		for (String mustPassVertex : mustPassVerticesId) {
+			if (!seq.contains(mustPassVertex))
+				return false;
+		}
+		
+		if (edge != null) {
+			
+			boolean checkEdge = false;
+			
+			mxCell vertexA = (mxCell) edge.getSource();
+			mxCell vertexB = (mxCell) edge.getTerminal(false);
+			
+			for (int i = 0; i < seq.size() - 1; i++) {
+				if (seq.get(i).equals(vertexA.getId()) && seq.get(i+1).equals(vertexB.getId()))
+					checkEdge = true;
+			}
+			
+			return checkEdge;
+			
+		}
+		
+		return true;
+		
+	}
+	
+	private static synchronized ArrayList<String> getSequenceBFS(GraphProjectVO graphProject, ArrayList<String> mustPassVerticesId, mxGraph graph, mxCell edge) {
+
+		class Vertice {
+			public String id;
+			public ArrayList<String> seq;			
+			
+			Vertice(String id, ArrayList<String> seq) {
+				this.id = id;
+				
+				this.seq = new ArrayList<String>();
+				for (String v : seq) {
+					this.seq.add(v);
+				}
+				this.seq.add(this.id);
+			}
+			
+			String getId() {
+				return this.id;
+			}
+			
+			ArrayList<String> getSeq() {
+				return this.seq;
+			}
+			
+			Object[] getOutgoingEdges(mxGraph graph) {
+				mxCell cell = (mxCell) ((mxGraphModel)graph.getModel()).getCell(this.id);
+				Object[] outgoingEdges = graph.getOutgoingEdges(cell);
+				return outgoingEdges;				
+			}
+			
+		}
+		
+		int visitsLimit = 100;
+		
+		int searchLimit = 100000;
+		
+		int searchAux = 1;
+		
+		Map<String, Integer> visitas = new LinkedHashMap<String, Integer>();
+		ArrayList<Vertice> fila = new ArrayList<Vertice>();
+		
+		fila.add(new Vertice(MainView.ID_START_VERTEX, new ArrayList<String>()));
+		
+		while (fila.size() > 0 && searchAux < searchLimit) {
+			
+			Vertice v = fila.remove(0);
+			Object[] edges = v.getOutgoingEdges(graph);
+			
+			for (int i = 0; i < edges.length; i++) {
+				
+				mxCell terminalVertex = (mxCell)((mxCell)edges[i]).getTerminal(false);
+				
+				if (getVertexVisits(visitas, terminalVertex.getId()) < visitsLimit) {
+					
+					incrementVertexVisits(visitas, terminalVertex.getId());
+					
+					Vertice newV = new Vertice(terminalVertex.getId(), v.getSeq());
+					
+					fila.add(newV);
+					
+					if (checkBFS(newV.getSeq(), mustPassVerticesId, edge)) {
+						
+						newV.getSeq().add(MainView.ID_END_VERTEX);
+						
+						return newV.getSeq();
+					}
+										
+				}
+				
+			}
+			
+			searchAux++;
+			
+		}
+		
+		return null;
+		
+	}
+	
+	private static synchronized ArrayList<Object> getPathFromVerticesOrder(ArrayList<String> verticesOrder, GraphProjectVO graphProject, mxGraph graph) {
+		
+		mxICostFunction mcf = new mxConstCostFunction(1.00d);
+		mxGraphAnalysis mga = mxGraphAnalysis.getInstance();
+		
+		ArrayList<Object> path = new ArrayList<Object>();
+		
+		for (int i = 0; i < verticesOrder.size()-1; i++) {
+		
+			mxCell vertexA = (mxCell) ((mxGraphModel)graph.getModel()).getCell(verticesOrder.get(i));
+			
+			mxCell vertexB = (mxCell) ((mxGraphModel)graph.getModel()).getCell(verticesOrder.get(i+1));
+			
+			Object[] elements = mga.getShortestPath(graph, vertexA, vertexB, mcf, 1000, true);
+			
+			for (int j = 0; j < elements.length - 1; j++) {
+				path.add(elements[j]);
+			}
+			
+		}
+		
+		path.add((mxCell) ((mxGraphModel)graph.getModel()).getCell(MainView.ID_END_VERTEX));		
+		
+		return path;
+		
+	}
+	
 	private static synchronized List<CtMethod<?>> getMethodsToCreateFromCES(GraphProjectVO graphProject, List<Vertex> ces, mxGraph graph) {
 		
 		List<CtMethod<?>> methodsToCreate = new ArrayList<CtMethod<?>>();
@@ -646,7 +798,7 @@ public class GraphProjectBO implements Serializable {
 			ArrayList<String> verticesId = new ArrayList<String>();
 			
 			for (Map.Entry<String, ArrayList<EventInstance>> entry : graphProject.getEventInstanceByVertices().entrySet()) {
-				for (EventInstance ei : entry.getValue()) {
+				for (EventInstance ei : entry.getValue()) {					
 					if (ei.getTestCaseMethodName().equals(eventInstanceGroup)) {
 						verticesId.add(entry.getKey());
 					}
@@ -661,44 +813,10 @@ public class GraphProjectBO implements Serializable {
 				}
 			}
 			
-			ArrayList<Object> path = new ArrayList<Object>();			
+			ArrayList<String> verticesOrder = getSequenceBFS(graphProject, verticesId, graph, null);
 			
-			mxCell vertexA = (mxCell) ((mxGraphModel)graph.getModel()).getCell(MainView.ID_START_VERTEX);
-			
-			path.add(vertexA);
-			
-			verticesId.add(MainView.ID_END_VERTEX);
-					
-			while (!verticesId.isEmpty()) {
-				
-				int pathLength = -1;
-				String idShorterPath = null;
-				Object[] nextPath = null;
-				
-				for (String id : verticesId) {
-					
-					mxCell aux = (mxCell) ((mxGraphModel)graph.getModel()).getCell(id);
-					
-					Object[] elements = mga.getShortestPath(graph, vertexA, aux, mcf, 1000, true);
-					
-					if (pathLength == -1 || elements.length < pathLength) {
-						pathLength = elements.length;
-						idShorterPath = id;
-						nextPath = elements.clone();
-					}
-					
-				}
-				
-				verticesId.remove(idShorterPath);
-				
-				for (Object element : nextPath) {
-					if (nextPath[0] != element)
-						path.add(element);
-				}
-				
-				vertexA = (mxCell) ((mxGraphModel)graph.getModel()).getCell(idShorterPath);
-				
-			}
+			ArrayList<Object> path = getPathFromVerticesOrder(verticesOrder, graphProject, graph);
+
 			ArrayList<String> eventInstanceToUse = new ArrayList<String>();
 			eventInstanceToUse.add(eventInstanceGroup);
 			methodsToCreate.add(createMethodFromPath(graphProject, path, eventInstanceToUse));
@@ -718,51 +836,6 @@ public class GraphProjectBO implements Serializable {
 			}
 						
 		}
-		
-		/*while (!newEdgesCreatedByUser.isEmpty()) {
-			
-			Map.Entry<String,ArrayList<String>> entry = newEdgesCreatedByUser.entrySet().iterator().next();
-		 	String newEdgeId = entry.getKey();
-			
-			mxCell newEdge = (mxCell) ((mxGraphModel)graph.getModel()).getCell(newEdgeId);
-			
-			mxCell startVertex = (mxCell) ((mxGraphModel)graph.getModel()).getCell(MainView.ID_START_VERTEX);
-			mxCell endVertex = (mxCell) ((mxGraphModel)graph.getModel()).getCell(MainView.ID_END_VERTEX);
-			mxCell sourceVertex = (mxCell)newEdge.getSource();
-			mxCell terminalVertex = (mxCell)newEdge.getTerminal(false);
-
-			Object[] pathA = mga.getShortestPath(graph, startVertex, sourceVertex, mcf, 1000, true);
-			Object[] pathB = mga.getShortestPath(graph, terminalVertex, endVertex, mcf, 1000, true);
-			
-			ArrayList<Object> path = new ArrayList<Object>();
-			
-			for (Object element : pathA) {
-				path.add(element);
-			}
-			
-			path.add(newEdge);
-			
-			for (Object element : pathB) {
-				path.add(element);
-			}
-			
-			methodsToCreate.add(createMethodFromPath(graphProject, path, graphProject.getEdgesCreatedByUser().get(newEdgeId)));
-						
-			//Update remaining edges to be covered
-			ArrayList<String> removeFromEdgesRemaining = new ArrayList<String>();
-			for (Map.Entry<String, ArrayList<String>> ei : newEdgesCreatedByUser.entrySet()) {
-			    String key = ei.getKey();			    
-				for (Object element : path) {
-					mxCell e = (mxCell) element;
-					if (e.getId().equals(key))
-						removeFromEdgesRemaining.add(key);
-				}
-			}
-			for (String edge : removeFromEdgesRemaining) {
-				newEdgesCreatedByUser.remove(edge);
-			}
-			
-		}*/
 		
 		// ---------- Paths for new edges with restrictions
 		
@@ -789,45 +862,12 @@ public class GraphProjectBO implements Serializable {
 				}
 			}
 			
-			ArrayList<Object> path = new ArrayList<Object>();			
+			ArrayList<String> verticesOrder = getSequenceBFS(graphProject, verticesId, graph, newEdge);
 			
-			mxCell vertexA = (mxCell) ((mxGraphModel)graph.getModel()).getCell(MainView.ID_START_VERTEX);
+			//PRECISO COLOCAR UMA VERIFICACAO DE QUE OS DOIS VERTICES DA ARESTA ESTAO EM SEQUENCIA
 			
-			path.add(vertexA);
+			ArrayList<Object> path = getPathFromVerticesOrder(verticesOrder, graphProject, graph);
 			
-			verticesId.add(MainView.ID_END_VERTEX);
-					
-			while (!verticesId.isEmpty()) {
-				
-				int pathLength = -1;
-				String idShorterPath = null;
-				Object[] nextPath = null;
-				
-				for (String id : verticesId) {
-					
-					mxCell aux = (mxCell) ((mxGraphModel)graph.getModel()).getCell(id);
-					
-					Object[] elements = mga.getShortestPath(graph, vertexA, aux, mcf, 1000, true);
-					
-					if (pathLength == -1 || elements.length < pathLength) {
-						pathLength = elements.length;
-						idShorterPath = id;
-						nextPath = elements.clone();
-					}
-					
-				}
-				
-				verticesId.remove(idShorterPath);
-				
-				for (Object element : nextPath) {
-					if (nextPath[0] != element)
-						path.add(element);
-				}
-				
-				vertexA = (mxCell) ((mxGraphModel)graph.getModel()).getCell(idShorterPath);
-				
-			}
-
 			methodsToCreate.add(createMethodFromPath(graphProject, path, graphProject.getEdgesCreatedByUser().get(newEdgeId)));
 			
 			//Update remaining edges to be covered
