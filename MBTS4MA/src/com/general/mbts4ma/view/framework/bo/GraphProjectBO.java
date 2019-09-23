@@ -1071,7 +1071,7 @@ public class GraphProjectBO implements Serializable {
 		
 		String methodSignature = split[1];
 		String className = split[0];
-			
+		
 		CtMethod<?> ctMethod = SpoonUtil.getCtMethodFromMethodSignatureAndClassName(methodSignature, className, graphProject.getLauncher(), graphProject.getPageObjects());
 		
 		CtConstructor<?> constructor = null;
@@ -1127,7 +1127,7 @@ public class GraphProjectBO implements Serializable {
 				
 				for (Parameter p : ei.getParameters()) {
 				
-					if (ctParameter.getSimpleName().equals(p.getName()) || ctParameter.getSimpleName().contains(p.getName()) || (ctParameter.getType().getSimpleName() + " " + ctParameter.getSimpleName()).equals(p.getName())) {
+					if (ctParameter.getSimpleName().equals(p.getName()) || ctParameter.getSimpleName().contains(p.getName()) || p.getName().contains(ctParameter.getSimpleName()) || (ctParameter.getType().getSimpleName() + " " + ctParameter.getSimpleName()).equals(p.getName())) {
 						if (!setParamsStr.equals(""))
 							setParamsStr += ", ";
 						setParamsStr += p.getValue();

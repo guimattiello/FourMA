@@ -862,7 +862,7 @@ public class MainView extends JFrame {
 	                    			
 	                    			if (ctElement instanceof CtInvocation) {
 		                    			ctInvocation = (CtInvocation) ctElement;
-		                    			System.out.println(ctInvocation.getExecutable().getSignature().toString() + " - " + ctInvocation.getArguments());
+		                    			//System.out.println(ctInvocation.getExecutable().getSignature().toString() + " - " + ctInvocation.getArguments());
 		                    			
 		                    			//Create the parameters
 		                    			List<CtExpression<?>> args = ctInvocation.getArguments();
@@ -870,7 +870,7 @@ public class MainView extends JFrame {
 		                    			int countNameParam = 0;
 		                    			
 		                    			for (CtExpression<?> param : args) {
-		                    				CtMethod<?> methodParam = SpoonUtil.getMethodBySignature(ctInvocation.getExecutable().getSignature(), classesList, ctInvocation.getExecutable().getType().toString(), graphProject.getPageObjects());
+		                    				CtMethod<?> methodParam = SpoonUtil.getMethodBySignature(ctInvocation.getExecutable().getSignature(), classesList, ctInvocation.getTarget().getType().toString(), graphProject.getPageObjects());		                    				
 		                    				Parameter p = new Parameter(param.getType().getSimpleName(), param.toString(), (methodParam != null ? methodParam.getParameters().get(countNameParam).toString() : "nome do metodo"));
 											parameters.add(p);
 											countNameParam++;
@@ -997,7 +997,7 @@ public class MainView extends JFrame {
 		                    	
 							}
 	                    		                    	
-		    				System.out.println("---------\n---------\n---------");
+		    				//System.out.println("---------\n---------\n---------");
 	                    	
 	                    }
 	                    

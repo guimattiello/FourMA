@@ -105,6 +105,8 @@ public class ParametersDialog extends JDialog {
 			if (graphProject.getIsWebProject()) {
 				String idVertex = this.vertice.getId();
 				String methodSignature = this.graphProject.getMethodTemplatesByVertices().get(idVertex);
+				String[] split = methodSignature.split("::");		
+				String className = split[0];
 				if (methodSignature.contains("assertEquals") || methodSignature.contains("assertTrue") || methodSignature.equals("assertFalse")) {
 					
 					if (methodSignature.contains("assertEquals")) {
@@ -117,8 +119,9 @@ public class ParametersDialog extends JDialog {
 					}
 					
 				} else {
-					CtMethod<?> method = SpoonUtil.getMethodBySignature(SpoonUtil.getSignatureFromMethodTemplate(methodSignature), this.graphProject.getLauncher().getFactory().Class().getAll(), null, this.graphProject.getPageObjects());
-									
+					//Alterado o método chamado, pois não estava autalizado o launcher e não achava os métodos abstratos que eram criados
+					//CtMethod<?> method = SpoonUtil.getMethodBySignature(SpoonUtil.getSignatureFromMethodTemplate(methodSignature), this.graphProject.getLauncher().getFactory().Class().getAll(), className, this.graphProject.getPageObjects());
+					CtMethod<?> method = SpoonUtil.getCtMethodFromMethodSignatureAndClassName(SpoonUtil.getSignatureFromMethodTemplate(methodSignature), className, this.graphProject.getLauncher(), this.graphProject.getPageObjects());
 					for (CtParameter<?> param : method.getParameters()) {
 						header.add(param.getType() + " " + param.getSimpleName() + " : " + param.getType());
 					}
