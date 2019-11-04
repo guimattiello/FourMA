@@ -773,22 +773,7 @@ public class MainView extends JFrame {
 			return;
 		}
 		
-		/* PUXA TODOS OS ARQUIVOS DE UMA PASTA E CRIA UM MODELO SPOON (UTIL PARA OS PAGE OBJECTS)*/
-		/*Launcher launcher = new Launcher();
-		launcher.getEnvironment().setNoClasspath(true);
-		launcher.getEnvironment().setAutoImports(true);
-		launcher.addInputResource(graphProject.getWebProjectDirTestPath());
-		launcher.getEnvironment().setSourceOutputDirectory(new File("/Users/guimat/projetos-teste/output/"));
-		
-		launcher.buildModel();*/
-		
-		/*
-		//To print the files use
-		launcher.prettyprint();
-		//or
-		SpoonModelCompiler comp = new SpoonModelCompiler(launcher.getFactory());
-		comp.generateProcessedSourceFilesUsingCUs();
-		*/
+		long initialTime = System.currentTimeMillis();
 
 		//final CtModelImpl model = (CtModelImpl) launcher.getModel();
 		List<CtType<?>> classesList = this.graphProject.getLauncher().getFactory().Class().getAll();
@@ -1037,6 +1022,24 @@ public class MainView extends JFrame {
 
 		MainView.this.graph.getModel().endUpdate();
 		
+		//---- METRICS ---- //
+		System.out.println("Time to create graph: " + (System.currentTimeMillis() - initialTime) + " miliseconds");
+		Object[] edges = graph.getChildEdges(graph.getDefaultParent());
+		Object[] vertices = graph.getChildVertices(graph.getDefaultParent());
+		System.out.println("#Vertices WITHOUT initial/final: " + this.graphProject.getMethodTemplatesByVertices().size());
+		System.out.println("#Vertices with initial/final: " + vertices.length);
+		System.out.println("#Edges: " + edges.length);
+		
+		int eiCount = 0;
+		Map<String, ArrayList<EventInstance>> ei = this.graphProject.getEventInstanceByVertices();
+		for (ArrayList<EventInstance> value : ei.values()) {
+		    for (EventInstance e : value) {
+		    	if (e.getCreatedAutomatically())
+		    		eiCount++;
+		    }
+		}		
+		System.out.println("#EventInstance automatically created: " + eiCount);
+		//---- END METRICS ---- //
 		
 		this.updateControllers();
 	}
@@ -1071,9 +1074,26 @@ public class MainView extends JFrame {
 					launcher.buildModel();
 					
 					this.graphProject.setLauncher(launcher);
+					
+					System.out.println("#Vertices WITHOUT initial/final: " + this.graphProject.getMethodTemplatesByVertices().size());
+					int eiCount = 0;
+					Map<String, ArrayList<EventInstance>> ei = this.graphProject.getEventInstanceByVertices();
+					for (ArrayList<EventInstance> value : ei.values()) {
+					    for (EventInstance e : value) {
+					    	if (!e.getCreatedAutomatically())
+					    		eiCount++;
+					    }
+					}
+					System.out.println("#EventInstance created by the user: " + eiCount);					
+					
 				}
 				
 				GraphProjectBO.loadGraphFromXML(this.graph, this.graphProject.getGraphXML());
+								
+				Object[] edges = graph.getChildEdges(graph.getDefaultParent());
+				Object[] vertices = graph.getChildVertices(graph.getDefaultParent());
+				System.out.println("#Edges: " + edges.length);
+				System.out.println("#Vertices with initial/final: " + vertices.length);				
 
 				JOptionPane.showMessageDialog(null, "Project successfully opened.", "Attention", JOptionPane.INFORMATION_MESSAGE);
 			} catch (Exception e) {

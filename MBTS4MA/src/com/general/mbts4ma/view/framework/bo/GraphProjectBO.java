@@ -781,6 +781,11 @@ public class GraphProjectBO implements Serializable {
 		mxICostFunction mcf = new mxConstCostFunction(1.00d);
 		mxGraphAnalysis mga = mxGraphAnalysis.getInstance();
 		
+		double timeToGeneratePath = 0;
+		double timeToGenerateTestCasesFromPath = 0;
+		double initial = 0;
+		int eventCount = 0;
+		
 		//Find paths covering all event instances
 		ArrayList<String> eventInstanceGroups = graphProject.getDistinctGroupNameOfEventInstances();
 		
@@ -813,13 +818,21 @@ public class GraphProjectBO implements Serializable {
 				}
 			}
 			
+			initial = System.currentTimeMillis();
 			ArrayList<String> verticesOrder = getSequenceBFS(graphProject, verticesId, graph, null);
-			
+			if (verticesOrder == null || verticesOrder.size() == 0) {
+				System.out.println(eventInstanceGroup);
+			}
 			ArrayList<Object> path = getPathFromVerticesOrder(verticesOrder, graphProject, graph);
+			timeToGeneratePath += (System.currentTimeMillis() - initial);
+			eventCount += (path.size() - 3)/2; //Length of path - less initial and final vertices and edges - considering only vertices
 
 			ArrayList<String> eventInstanceToUse = new ArrayList<String>();
 			eventInstanceToUse.add(eventInstanceGroup);
+			
+			initial = System.currentTimeMillis();
 			methodsToCreate.add(createMethodFromPath(graphProject, path, eventInstanceToUse));
+			timeToGenerateTestCasesFromPath += (System.currentTimeMillis() - initial);
 			
 			//Update remaining edges to be covered
 			ArrayList<String> removeFromEdgesRemaining = new ArrayList<String>();
@@ -862,13 +875,18 @@ public class GraphProjectBO implements Serializable {
 				}
 			}
 			
+			initial = System.currentTimeMillis();
 			ArrayList<String> verticesOrder = getSequenceBFS(graphProject, verticesId, graph, newEdge);
 			
 			//PRECISO COLOCAR UMA VERIFICACAO DE QUE OS DOIS VERTICES DA ARESTA ESTAO EM SEQUENCIA
 			
 			ArrayList<Object> path = getPathFromVerticesOrder(verticesOrder, graphProject, graph);
+			timeToGeneratePath += (System.currentTimeMillis() - initial);
+			eventCount += (path.size() - 3)/2; //Length of path - less initial and final vertices and edges - considering only vertices
 			
+			initial = System.currentTimeMillis();
 			methodsToCreate.add(createMethodFromPath(graphProject, path, graphProject.getEdgesCreatedByUser().get(newEdgeId)));
+			timeToGenerateTestCasesFromPath += (System.currentTimeMillis() - initial);
 			
 			//Update remaining edges to be covered
 			ArrayList<String> removeFromEdgesRemaining = new ArrayList<String>();
@@ -901,6 +919,9 @@ public class GraphProjectBO implements Serializable {
 		}
 		// ----------
 				
+		System.out.println("Time to generate paths: " + timeToGeneratePath);
+		System.out.println("Time to generate test cases from path: " + timeToGenerateTestCasesFromPath);
+		System.out.println("Event count (vertices): " + eventCount);
 		System.out.println(methodsToCreate.toString());
 		
 		return methodsToCreate;
@@ -1147,7 +1168,11 @@ public class GraphProjectBO implements Serializable {
 
 			//for (List<Vertex> ces : cess) {
 				
+				long initialTime = System.currentTimeMillis();
+			
 				List<CtMethod<?>> methods = getMethodsToCreateFromCES(graphProject, null, graph);
+				
+				System.out.println("Time to generate new TCs: " + (System.currentTimeMillis() - initialTime) + " milliseconds");
 				
 				//System.out.println(methods);
 				
