@@ -1,6 +1,6 @@
-# MBTS4MA
+# MoLeWe
 
-This project provides the source code for the MBTS4MA tool. It aims to support the model-based testing of mobile apps developed for the Android platform. 
+This project provides the source code for the MoLeWe tool. It aims to support the model-based testing of mobile apps developed for the Android platform and web test suites, developed in Java, using Selenium and the Page Objects pattern. 
 
 It is the main result of the master thesis of Guilherme de Cleva Farto, supervised by Andre Takeshi Endo.
 UTFPR - Campus Cornelio Procopio - Brazil 
